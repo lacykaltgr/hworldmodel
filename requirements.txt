@@ -1,0 +1,8 @@
+torchrl
+hydra-core
+tqdm
+wandb
+torchvision
+
+# dm_control
+torchrl[dm_control]
