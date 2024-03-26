@@ -113,6 +113,8 @@ def main(cfg: "DictConfig"):  # noqa: F821
 
         if logger is not None:
             log_metrics(logger, metrics_to_log, collected_frames)
+        
+        print(f"Collected frames: {collected_frames}")
 
         model.policy.step(current_frames)
         collector.update_policy_weights_()
@@ -121,8 +123,8 @@ def main(cfg: "DictConfig"):  # noqa: F821
         if abs(collected_frames % eval_iter) < frames_per_batch:
             with set_exploration_type(ExplorationType.MODE), torch.no_grad():
                 eval_rollout = test_env.rollout(
-                    eval_rollout_steps,
-                    model.policy,
+                    max_steps = eval_rollout_steps,
+                    policy = model.policy,
                     auto_cast_to_device=True,
                     break_when_any_done=True,
                 )

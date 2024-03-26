@@ -201,7 +201,7 @@ class DreamerV1(ArchitectureConfig):
             SafeModule(
                 nets["rssm_posterior"],
                 in_keys=["belief", "encoded_latents"],
-                out_keys=[ "_", "_","state",],
+                out_keys=[ "_", "_", "state",],
             ),
             SafeProbabilisticTensorDictSequential(
                 SafeModule(
@@ -233,9 +233,10 @@ class DreamerV1(ArchitectureConfig):
             SafeModule(
                 nets["rssm_prior"],
                 in_keys=["state", "belief", action_key],
-                out_keys=["_", "_", "_",("next", "belief")], # we don't need the prior state
+                out_keys=["_", "_", "_", ("next", "belief")], # we don't need the prior state
             ),
         )
+        
         actor_realworld = AdditiveGaussianWrapper(
             actor_realworld,
             sigma_init=1.0,

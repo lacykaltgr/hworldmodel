@@ -12,7 +12,7 @@ project_name="torchrl-example-check-$current_commit"
 group_name="dreamer_cheetah"
 
 #export PYTHONPATH=$(dirname $(dirname $PWD))
-python functional/train.py
+xvfb-run -a python functional/train.py
 
 # Capture the exit status of the Python command
 exit_status=$?
