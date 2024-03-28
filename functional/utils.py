@@ -41,6 +41,7 @@ def make_env(cfg, device):
             return GymEnv(
                 cfg.env.name,
                 device=device,
+                from_pixels=cfg.env.from_pixels
             )
     elif lib == "dm_control":
         env = DMControlEnv(cfg.env.name, cfg.env.task, from_pixels=cfg.env.from_pixels)
@@ -191,3 +192,4 @@ def get_activation(name):
         return nn.ELU
     else:
         raise NotImplementedError
+    

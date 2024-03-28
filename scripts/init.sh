@@ -1,3 +1,5 @@
+# development initializer script for headless docker container
+
 pip install -r requirements.txt
 git config --global --add safe.directory /app
 apt-get update

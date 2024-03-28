@@ -12,7 +12,7 @@ from torchrl.record.loggers import generate_exp_name, get_logger
 from architectures import ArchitectureConfig
 
 
-@hydra.main(version_base="1.1", config_path="../configs", config_name="config")
+@hydra.main(version_base="1.1", config_path="../configs", config_name="test_config")
 def main(cfg: "DictConfig"):  # noqa: F821
     # cfg = correct_for_frame_skip(cfg)
 
@@ -32,6 +32,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
             logger_name=f"{cfg.architecture.name.lower()}_logging",
             experiment_name=exp_name,
             wandb_kwargs={"mode": cfg.logger.mode},  # "config": cfg},
+            
         )
 
     train_env, test_env = make_environments(cfg=cfg, device=device)
@@ -113,8 +114,6 @@ def main(cfg: "DictConfig"):  # noqa: F821
 
         if logger is not None:
             log_metrics(logger, metrics_to_log, collected_frames)
-        
-        print(f"Collected frames: {collected_frames}")
 
         model.policy.step(current_frames)
         collector.update_policy_weights_()
@@ -132,6 +131,10 @@ def main(cfg: "DictConfig"):  # noqa: F821
                 eval_metrics = {"eval/reward": eval_reward}
                 if logger is not None:
                     log_metrics(logger, eval_metrics, collected_frames)
+                    logger.log_video(
+                        "eval/rollout",
+                        (eval_rollout["pixels"] * 255).detach().cpu().to(torch.uint8),
+                    )
 
 
 if __name__ == "__main__":

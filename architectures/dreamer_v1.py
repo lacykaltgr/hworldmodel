@@ -8,7 +8,6 @@ import torch.nn as nn
 from tensordict.nn import InteractionType
 
 from torchrl.data.tensor_specs import CompositeSpec, UnboundedContinuousTensorSpec
-from torchrl.envs.model_based.dreamer import DreamerEnv
 from torchrl.envs.utils import ExplorationType, set_exploration_type
 from torchrl.modules import (
     MLP,
@@ -32,6 +31,7 @@ from torchrl.modules.tensordict_module.world_models import WorldModelWrapper
 from functional.utils import *
 from losses.dreamer_losses import *
 from . import ArchitectureConfig
+from envs.dreamer_env import DreamerEnv
 
 
 class DreamerV1(ArchitectureConfig):
@@ -61,10 +61,9 @@ class DreamerV1(ArchitectureConfig):
         hidden_dim = config.networks.hidden_dim
         state_dim = config.networks.state_dim
         rssm_dim = config.networks.rssm_hidden_dim
-        
         return dict(
             encoder = (ObsEncoder() if config.env.from_pixels 
-                    else MLP(out_features=1024, depth=2, num_cells=hidden_dim, activation_class=activation)),
+                    else MLP(out_features=64, depth=2, num_cells=hidden_dim, activation_class=activation)),
             decoder = (ObsDecoder() if config.env.from_pixels
                     else MLP(out_features=proof_env.observation_spec["observation"].shape[-1], depth=2, num_cells=hidden_dim, activation_class=activation)),
             rssm_prior = RSSMPrior(hidden_dim=hidden_dim,  rnn_hidden_dim=rssm_dim, state_dim=state_dim, action_spec=action_spec),
@@ -123,8 +122,8 @@ class DreamerV1(ArchitectureConfig):
                 discount_loss=True
             ).optimize(modules=[modules["value_model"]], lr=config.optimization.value_lr),
         )
-        if config.env.backend == "gym":
-            losses.world_model_loss.set_keys(pixels="observation", reco_pixels="reco_observation")
+        #if config.env.backend == "gym" or config.env.backend == "gymnasium":
+        #    losses["world_model"].set_keys(pixels="observation", reco_pixels="reco_observation")
         return losses
 
 
@@ -233,7 +232,7 @@ class DreamerV1(ArchitectureConfig):
             SafeModule(
                 nets["rssm_prior"],
                 in_keys=["state", "belief", action_key],
-                out_keys=["_", "_", "_", ("next", "belief")], # we don't need the prior state
+                out_keys=["_", "_", "_", "belief"], # we don't need the prior state
             ),
         )
         
