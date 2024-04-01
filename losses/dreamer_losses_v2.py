@@ -21,6 +21,7 @@ from torchrl.objectives.utils import (
 )
 from torchrl.objectives.value import TD0Estimator, TD1Estimator, TDLambdaEstimator
 from losses import loss
+from torchrl.modules.distributions import OneHotCategorical, ReparamGradientStrategy as Repa
 
 
 @loss(
@@ -82,10 +83,8 @@ class DreamerModelLoss(LossModule):
 
         reward: NestedKey = "reward"
         true_reward: NestedKey = "true_reward"
-        prior_mean: NestedKey = "prior_mean"
-        prior_std: NestedKey = "prior_std"
-        posterior_mean: NestedKey = "posterior_mean"
-        posterior_std: NestedKey = "posterior_std"
+        prior: NestedKey = "prior"
+        posterior: NestedKey = "posterior"
         pixels: NestedKey = "pixels"
         reco_pixels: NestedKey = "reco_pixels"
 
@@ -98,6 +97,7 @@ class DreamerModelLoss(LossModule):
         lambda_kl: float = 1.0,
         lambda_reco: float = 1.0,
         lambda_reward: float = 1.0,
+        kl_balance: float = 0.1,
         reco_loss: Optional[str] = None,
         reward_loss: Optional[str] = None,
         free_nats: int = 3,
@@ -114,6 +114,7 @@ class DreamerModelLoss(LossModule):
         self.free_nats = free_nats
         self.delayed_clamp = delayed_clamp
         self.global_average = global_average
+        self.kl_balance = kl_balance
 
     def _forward_value_estimator_keys(self, **kwargs) -> None:
         pass
@@ -125,13 +126,19 @@ class DreamerModelLoss(LossModule):
             ("next", self.tensor_keys.true_reward),
         )
         tensordict = self.world_model(tensordict)
+        
         # compute model loss
-        kl_loss = self.kl_loss(
-            tensordict.get(("next", self.tensor_keys.prior_mean)),
-            tensordict.get(("next", self.tensor_keys.prior_std)),
-            tensordict.get(("next", self.tensor_keys.posterior_mean)),
-            tensordict.get(("next", self.tensor_keys.posterior_std))
+        
+        kl_prior = self.kl_loss(
+            tensordict.get(("next", self.tensor_keys.prior)),
+            tensordict.get(("next", self.tensor_keys.posterior)).detach(),
         )
+        kl_post = self.kl_loss(
+            tensordict.get(("next", self.tensor_keys.prior)).detach(),
+            tensordict.get(("next", self.tensor_keys.posterior)),
+        )
+        
+        kl_loss = (self.kl_balance * kl_prior + (1 - self.kl_balance) * kl_post).clamp_min(self.free_nats)
         
         decoder = self.world_model[0][-1]
         dist = decoder.get_dist(tensordict)
@@ -178,18 +185,19 @@ class DreamerModelLoss(LossModule):
 
     def kl_loss(
         self,
-        prior_mean: torch.Tensor,
-        prior_std: torch.Tensor,
-        posterior_mean: torch.Tensor,
-        posterior_std: torch.Tensor,
+        prior_logits: torch.Tensor,
+        posterior_logits: torch.Tensor,
     ) -> torch.Tensor:
-        kl = (
-            torch.log(prior_std / posterior_std)
-            + (posterior_std**2 + (prior_mean - posterior_mean) ** 2)
-            / (2 * prior_std**2)
-            - 0.5
-        ).mean()
-        return kl.clamp_min(self.free_nats)
+        dist_prior = self.get_distribution(prior_logits)
+        dist_post = self.get_distribution(posterior_logits)
+        kl = torch.distributions.kl.kl_divergence(
+            dist_post, dist_prior
+        )
+        return kl
+
+    def get_distribution(self, logits):
+        dist = OneHotCategorical(logits=logits, grad_method=Repa.PassThrough)
+        return dist
 
 @loss(name="loss_actor")
 class DreamerActorLoss(LossModule):

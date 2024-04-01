@@ -6,3 +6,13 @@ torchvision
 
 # dm_control
 torchrl[dm_control]
+torchrl[gymnasium]
+
+gymnasium
+dm_control
+
+
+#swig
+gymnasium[box2d]
+
+moviepy

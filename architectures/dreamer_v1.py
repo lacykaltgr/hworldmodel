@@ -37,6 +37,7 @@ from envs.dreamer_env import DreamerEnv
 class DreamerV1(ArchitectureConfig):
     
     def __init__(self, config, device):
+        super(DreamerV1, self).__init__()
         test_env = make_env(config, device="cpu")
         test_env = transform_env(config, test_env, parallel_envs=1, dummy=True)
         
@@ -48,12 +49,12 @@ class DreamerV1(ArchitectureConfig):
         )
         
         self.networks = self._init_networks(config, test_env)
-        self.modules = self._init_modules(config, test_env, device)
+        self.parts = self._init_modules(config, test_env, device)
         self.losses = self._init_losses(config)
         
-        self.policy = self.modules["actor_realworld"]
+        self.policy = self.parts["actor_realworld"]
         
-    
+        
     def _init_networks(self, config, proof_env):
         activation = get_activation(config.networks.activation)
         action_spec = proof_env.action_spec
@@ -61,7 +62,7 @@ class DreamerV1(ArchitectureConfig):
         hidden_dim = config.networks.hidden_dim
         state_dim = config.networks.state_dim
         rssm_dim = config.networks.rssm_hidden_dim
-        return dict(
+        return nn.ModuleDict(modules = dict(
             encoder = (ObsEncoder() if config.env.from_pixels 
                     else MLP(out_features=64, depth=2, num_cells=hidden_dim, activation_class=activation)),
             decoder = (ObsDecoder() if config.env.from_pixels
@@ -71,6 +72,7 @@ class DreamerV1(ArchitectureConfig):
             reward_model = MLP(out_features=1, depth=2, num_cells=hidden_dim, activation_class=activation),
             actor_model = DreamerActor(out_features=action_spec.shape[-1], depth=3, num_cells=hidden_dim, activation_class=activation),
             value_model = MLP(out_features=1, depth=3, num_cells=hidden_dim, activation_class=activation)
+            )
         )
     
 
@@ -94,34 +96,36 @@ class DreamerV1(ArchitectureConfig):
             tensordict = tensordict.to_tensordict()
             world_model(tensordict)
         
-        return dict(
+        return nn.ModuleDict(modules=dict(
             world_model = world_model.to(device),
             model_based_env = model_based_env.to(device),
             actor_simulator = actor_simulator.to(device),
             value_model = value_model.to(device),
             actor_realworld = actor_realworld.to(device)
-        )
+        ))
         
     def _init_losses(self, config):
-        modules = self.modules
-        losses = dict(
+        losses = nn.ModuleDict(dict(
             world_model = DreamerModelLoss(
-                modules["world_model"]
-            ).optimize(modules=[modules["world_model"]], lr=config.optimization.world_model_lr),
+                self.parts["world_model"]
+            ).with_optimizer(params=self.parts["world_model"].parameters(), 
+                             lr=config.optimization.world_model_lr, weight_decay=1e-6),
             
             actor = DreamerActorLoss(
-                modules["actor_simulator"],
-                modules["value_model"],
-                modules["model_based_env"],
+                self.parts["actor_simulator"],
+                self.parts["value_model"],
+                self.parts["model_based_env"],
                 imagination_horizon=config.optimization.imagination_horizon,
-                discount_loss = True
-            ).optimize(modules=[modules["actor_simulator"]], lr=config.optimization.actor_lr),
+                discount_loss=True
+            ).with_optimizer(params=self.parts["actor_simulator"].parameters(), 
+                             lr=config.optimization.actor_lr, weight_decay=1e-6),
             
             value = DreamerValueLoss(
-                modules["value_model"],
+                self.parts["value_model"],
                 discount_loss=True
-            ).optimize(modules=[modules["value_model"]], lr=config.optimization.value_lr),
-        )
+            ).with_optimizer(params=self.parts["value_model"].parameters(), 
+                             lr=config.optimization.value_lr, weight_decay=1e-6),
+        ))
         #if config.env.backend == "gym" or config.env.backend == "gymnasium":
         #    losses["world_model"].set_keys(pixels="observation", reco_pixels="reco_observation")
         return losses

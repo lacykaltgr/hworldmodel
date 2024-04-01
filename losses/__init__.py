@@ -1,21 +1,25 @@
 from typing import List
 import torch
-from torch.nn import ModuleList
+from torch.nn import Module
 
 
 def loss(name: str, keys: List[str] = None):
   def decorator(cls):
-      
-    class LoggedLossModule(cls):
+    class MaintainedLossWrapper(Module):
       def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(MaintainedLossWrapper, self).__init__()
+        self.loss_module = cls(*args, **kwargs)
         self.loss_name: str = name
         self.loss_keys: List[str] = keys
         if self.loss_keys is None:
            self.loss_keys = [] 
         self.optimizer = None
         self.grad_scaler = None
-        self.parameters = None
+        self.grad_clipper = None
+        self.opt_params = None
+        
+      def forward(self, *args, **kwargs):
+        return self.loss_module(*args, **kwargs)
 
       def get_loss_keys(self):
         return self.loss_keys
@@ -33,17 +37,18 @@ def loss(name: str, keys: List[str] = None):
               LOSS += loss_dict[key]
           return LOSS
     
-      def optimize(self, modules, optimizer_cls=None, **optimizer_kwargs):
+      def with_optimizer(self, params, optimizer_cls=None, **optimizer_kwargs):
         if optimizer_cls is None:
           optimizer_cls = torch.optim.Adam
-        self.parameters = ModuleList(modules).parameters()
-        self.optimizer = optimizer_cls(self.parameters, **optimizer_kwargs)
+        
+        self.optimizer = optimizer_cls(params, **optimizer_kwargs)
         self.grad_scaler = torch.cuda.amp.GradScaler()
+        self.grad_clipper = lambda max_norm: torch.nn.utils.clip_grad_norm_(params, max_norm)
         return self
     
       def clip_grads(self, max_norm):
-        torch.nn.utils.clip_grad_norm_(self.parameters, max_norm)
+        self.grad_clipper(max_norm)
     
-    return LoggedLossModule
+    return MaintainedLossWrapper
 
   return decorator

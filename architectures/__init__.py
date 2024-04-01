@@ -1,8 +1,9 @@
 from abc import ABC
 from typing import Any, Dict
+from torch.nn import Module
 
 
-class ArchitectureConfig(ABC):
+class ArchitectureConfig(Module, ABC):
     networks: Any
-    modules: Any
+    parts: Any
     losses: Any
