@@ -145,25 +145,6 @@ class DreamerModelLoss(LossModule):
             tensordict.get(("next", self.tensor_keys.true_reward))
         ).mean()
         
-        #).unsqueeze(-1)
-        #reco_loss = distance_loss(
-        #    tensordict.get(("next", self.tensor_keys.pixels)),
-        #    tensordict.get(("next", self.tensor_keys.reco_pixels)),
-        #    self.reco_loss,
-        #)
-        #if not self.global_average:
-        #    reco_loss = reco_loss.sum((-3, -2, -1))
-        #reco_loss = reco_loss.mean().unsqueeze(-1)
-
-        #reward_loss = distance_loss(
-        #    tensordict.get(("next", self.tensor_keys.true_reward)),
-        #    tensordict.get(("next", self.tensor_keys.reward)),
-        #    self.reward_loss,
-        #)
-        #if not self.global_average:
-        #    reward_loss = reward_loss.squeeze(-1)
-        #reward_loss = reward_loss.mean().unsqueeze(-1)
-        ## import ipdb; ipdb.set_trace()
         return (
             TensorDict(
                 {
@@ -271,24 +252,16 @@ class DreamerActorLoss(LossModule):
     def forward(self, tensordict: TensorDict) -> Tuple[TensorDict, TensorDict]:
         with torch.no_grad():
             
-            # TODO: do we need to take the "next" state and "next" beliefs
-            tensordict = tensordict.select("state", self.tensor_keys.belief)
-            tensordict = tensordict.reshape(-1)
-            
-            # td = tensordict.select(("next", self.tensor_keys.state), ("next", self.tensor_keys.belief))
-            # td = td.rename_key_(("next", "state"), "state")
-            # td = td.rename_key_(("next", "belief"), "belief")
-            # td = td.reshape(-1)
+            td = tensordict.select(("next", self.tensor_keys.state), ("next", self.tensor_keys.belief))
+            td = td.rename_key_(("next", "state"), "state")
+            td = td.rename_key_(("next", "belief"), "belief")
+            td = td.reshape(-1)
 
         # TODO: do we need exploration here?
         with hold_out_net(self.model_based_env), set_exploration_type(
             ExplorationType.MEAN
         ):
-            # action_td = self.actor_model(td)
-
-            # TODO: we are not using the actual batch beliefs as starting ones - should be solved! took of the primer for the mb_env
             tensordict = self.model_based_env.reset(tensordict.clone(recurse=False))
-            # TODO: do we detach state gradients when passing again for new actions: action = self.actor(state.detach())
             fake_data = self.model_based_env.rollout(
                 max_steps=self.imagination_horizon,
                 policy=self.actor_model,
@@ -428,13 +401,9 @@ class DreamerValueLoss(LossModule):
 
     def forward(self, fake_data) -> torch.Tensor:
         lambda_target = fake_data.get("lambda_target")
-        #tensordict_select = fake_data.select(*self.value_model.in_keys)
-        #self.value_model(tensordict_select)
-            # TODO: I think this should be next state and belief
         td = fake_data.select(("next", "state"), ("next", "belief"))
         td = td.rename_key_(("next", "state"), "state")
         tensordict_select = td.rename_key_(("next", "belief"), "belief")
-        # tensordict_select = fake_data.select(*self.value_model.in_keys)
         dist = self.value_model.get_dist(tensordict_select)
         
         if self.discount_loss:
@@ -443,49 +412,10 @@ class DreamerValueLoss(LossModule):
             )
             discount[..., 0, :] = 1
             discount = discount.cumprod(dim=-2)
-            #value_loss = (
-            #    (
-            #        discount
-            #        * distance_loss(
-            #            tensordict_select.get(self.tensor_keys.value),
-            #            lambda_target,
-            #            self.value_loss,
-            #        )
-            #    )
-            #    .sum((-1, -2))
-            #    .mean()
-            #)
             value_loss = -(discount * dist.log_prob(lambda_target).unsqueeze(-1)).mean()
         else:
-            #value_loss = (
-            #    distance_loss(
-            #        tensordict_select.get(self.tensor_keys.value),
-            #        lambda_target,
-            #        self.value_loss,
-            #    )
-            #    .sum((-1, -2))
-            #    .mean()
-            #)
             value_loss = -dist.log_prob(lambda_target).mean()
 
         loss_tensordict = TensorDict({"loss_value": value_loss}, [])
         return loss_tensordict, fake_data
 
-
-"""
-# If we are logging videos, we keep some frames.
-if (
-    cfg.record_video
-    and (record._count + 1) % cfg.record_interval == 0
-):
-    sampled_tensordict_save = (
-        sampled_tensordict.select(
-            "next" "state",
-            "belief",
-        )[:4]
-        .detach()
-        .to_tensordict()
-    )
-else:
-    sampled_tensordict_save = None
-"""

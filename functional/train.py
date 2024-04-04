@@ -12,7 +12,7 @@ from torchrl.record.loggers import generate_exp_name, get_logger
 from architectures import ArchitectureConfig
 
 
-@hydra.main(version_base="1.1", config_path="../configs", config_name="config")
+@hydra.main(version_base="1.1", config_path="../configs/dreamerV2", config_name="config")
 def main(cfg: "DictConfig"):  # noqa: F821
     # cfg = correct_for_frame_skip(cfg)
 
@@ -111,6 +111,8 @@ def main(cfg: "DictConfig"):  # noqa: F821
                     loss.clip_grads(grad_clip)
                     loss.grad_scaler.step(loss.optimizer)
                     loss.grad_scaler.update()
+                    
+                model.update(step=i)
             
             metrics_to_log = dict()
             logger.log_video(
@@ -136,7 +138,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
         if logger is not None:
             log_metrics(logger, metrics_to_log, collected_frames)
 
-        model.policy.step(current_frames)
+        model.policy.step(current_frames) # exploration policy annealing
         collector.update_policy_weights_()
         
         # Evaluation

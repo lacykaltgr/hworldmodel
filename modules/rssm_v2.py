@@ -3,6 +3,9 @@ from packaging import version
 from torch import nn
 
 from torchrl.modules.distributions import OneHotCategorical, ReparamGradientStrategy as Repa
+from torch.distributions import Independent
+
+
 
 class RSSMPriorV2(nn.Module):
     """The prior network of the RSSM.
@@ -27,13 +30,7 @@ class RSSMPriorV2(nn.Module):
 
     """
 
-    def __init__(
-        self,
-        action_spec,
-        hidden_dim=200,
-        rnn_hidden_dim=200,
-        state_dim=30,
-    ):
+    def __init__(self, action_spec, hidden_dim=600, rnn_hidden_dim=600, state_vars=32, state_classes=32):
         super().__init__()
 
         # Prior
@@ -42,15 +39,14 @@ class RSSMPriorV2(nn.Module):
         self.rnn_to_prior_projector = nn.Sequential(
                 nn.Linear(hidden_dim, hidden_dim),
                 nn.ELU(),
-                nn.Linear(hidden_dim, state_dim)
+                nn.Linear(hidden_dim, state_vars * state_classes)
         )
 
-        self.state_dim = state_dim
+        self.state_vars = state_vars
+        self.state_classes = state_classes
         self.rnn_hidden_dim = rnn_hidden_dim
         self.action_shape = action_spec.shape
-        self._unsqueeze_rnn_input = version.parse(torch.__version__) < version.parse(
-            "1.11"
-        )
+        self._unsqueeze_rnn_input = version.parse(torch.__version__) < version.parse("1.11")
 
     def forward(self, state, belief, action):
         projector_input = torch.cat([state, action], dim=-1)
@@ -66,12 +62,14 @@ class RSSMPriorV2(nn.Module):
             belief = belief.squeeze(0)
 
         logits = self.rnn_to_prior_projector(belief)
-        dist = self.get_distribution(logits)
+        reshaped_logits = logits.view(-1, self.state_vars, self.state_classes)
+        dist = self.get_distribution(reshaped_logits)
         state = dist.rsample()
+        state = state.view(logits.shape)
         return logits, state, belief
     
     def get_distribution(self, state):
-        dist = OneHotCategorical(logits=state, grad_method=Repa.PassThrough)
+        dist = Independent(OneHotCategorical(logits=state, grad_method=Repa.PassThrough), 1)
         return dist
 
 
@@ -93,19 +91,27 @@ class RSSMPosteriorV2(nn.Module):
 
     """
 
-    def __init__(self, hidden_dim=200, state_dim=30, scale_lb=0.1):
-        super().__init__()
+    def __init__(self, hidden_dim=600, state_vars=32, state_classes=32):
+        super(RSSMPosteriorV2, self).__init__()
         self.obs_rnn_to_post_projector = nn.Sequential(
             nn.LazyLinear(hidden_dim),
             nn.ELU(),
-            nn.Linear(hidden_dim, 2 * state_dim),
-        ),
+            nn.Linear(hidden_dim, state_vars * state_classes),
+        )
         self.hidden_dim = hidden_dim
+        self.state_vars = state_vars
+        self.state_classes = state_classes
 
     def forward(self, belief, obs_embedding):
-        logits = self.obs_rnn_to_post_projector(
+        logits = self.obs_rnn_to_post_projector.forward(
             torch.cat([belief, obs_embedding], dim=-1)
         )
-        dist = self.get_distribution(logits)
+        reshaped_logits = logits.view(-1, self.state_vars, self.state_classes)
+        dist = self.get_distribution(reshaped_logits)
         state = dist.rsample()
+        state = state.view(logits.shape)
         return logits, state
+    
+    def get_distribution(self, state):
+        dist = Independent(OneHotCategorical(logits=state, grad_method=Repa.PassThrough), 1)
+        return dist
