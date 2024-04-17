@@ -116,13 +116,13 @@ class DreamerV1(ArchitectureConfig):
                 self.parts["value_model"],
                 self.parts["model_based_env"],
                 imagination_horizon=config.optimization.imagination_horizon,
-                discount_loss=True
+                discount_loss=False
             ).with_optimizer(params=self.parts["actor_simulator"].parameters(), 
                              lr=config.optimization.actor_lr, weight_decay=1e-6),
             
             value = DreamerValueLoss(
                 self.parts["value_model"],
-                discount_loss=True
+                discount_loss=False
             ).with_optimizer(params=self.parts["value_model"].parameters(), 
                              lr=config.optimization.value_lr, weight_decay=1e-6),
         ))
@@ -276,18 +276,10 @@ class DreamerV1(ArchitectureConfig):
             ),
         )
 
-        reward_model = SafeProbabilisticTensorDictSequential(
-            SafeModule(
+        reward_model = SafeModule(
                 nets["reward_model"],
                 in_keys=["state", "belief"],
-                out_keys=["loc"],
-            ),
-            SafeProbabilisticModule(
-                in_keys=["loc"],
                 out_keys=["reward"],
-                distribution_class=IndependentNormal,
-                distribution_kwargs={"scale": 1.0, "event_dim": 1},
-            ),
         )
 
         model_based_env = DreamerEnv(

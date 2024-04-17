@@ -64,21 +64,16 @@ def transform_env(cfg, env, parallel_envs, dummy=False):
     env.append_transform(DoubleToFloat())
     env.append_transform(RewardSum())
     env.append_transform(FrameSkipTransform(cfg.env.frame_skip))
+    
     if dummy:
         default_dict = {
-            "state": UnboundedContinuousTensorSpec(shape=(cfg.networks.state_dim)),
-            "belief": UnboundedContinuousTensorSpec(
-                shape=(cfg.networks.rssm_hidden_dim)
-            ),
+            "state": UnboundedContinuousTensorSpec(shape=(cfg.networks.state_vars * cfg.networks.state_dim)),
+            "belief": UnboundedContinuousTensorSpec(shape=(cfg.networks.rssm_hidden_dim)),
         }
     else:
         default_dict = {
-            "state": UnboundedContinuousTensorSpec(
-                shape=(parallel_envs, cfg.networks.state_dim)
-            ),
-            "belief": UnboundedContinuousTensorSpec(
-                shape=(parallel_envs, cfg.networks.rssm_hidden_dim)
-            ),
+            "state": UnboundedContinuousTensorSpec(shape=(parallel_envs, cfg.networks.state_vars * cfg.networks.state_dim)),
+            "belief": UnboundedContinuousTensorSpec(shape=(parallel_envs, cfg.networks.rssm_hidden_dim)),
         }
     env.append_transform(
         TensorDictPrimer(random=False, default_value=0, **default_dict)

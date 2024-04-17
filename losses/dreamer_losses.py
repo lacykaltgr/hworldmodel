@@ -277,12 +277,14 @@ class DreamerActorLoss(LossModule):
 
     def forward(self, tensordict: TensorDict) -> Tuple[TensorDict, TensorDict]:
         with torch.no_grad():
+            
             tensordict = tensordict.select(("next", "state"), ("next", self.tensor_keys.belief))
             tensordict = tensordict.rename_key_(("next", "state"), "state")
             tensordict = tensordict.rename_key_(("next", "belief"), "belief")
             tensordict = tensordict.reshape(-1)
 
         with hold_out_net(self.model_based_env), set_exploration_type(ExplorationType.MEAN):
+
             tensordict = self.model_based_env.reset(tensordict.clone(recurse=False))
             fake_data = self.model_based_env.rollout(
                 max_steps=self.imagination_horizon,
@@ -426,6 +428,7 @@ class DreamerValueLoss(LossModule):
         
         tensordict_select = tensordict_select.rename_key_(("next", "state"), "state")
         tensordict_select = tensordict_select.rename_key_(("next", "belief"), "belief")
+
         dist = self.value_model.get_dist(tensordict_select)
         
         if self.discount_loss:
@@ -439,4 +442,6 @@ class DreamerValueLoss(LossModule):
             value_loss = -dist.log_prob(lambda_target).mean()
 
         loss_tensordict = TensorDict({"loss_value": value_loss}, [])
+
         return loss_tensordict, fake_data.detach()
+
