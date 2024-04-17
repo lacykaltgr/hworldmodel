@@ -138,7 +138,7 @@ class DreamerModelLoss(LossModule):
             tensordict.get(("next", self.tensor_keys.posterior)),
         )
         
-        kl_loss = (self.kl_balance * kl_prior + (1 - self.kl_balance) * kl_post).clamp_min(self.free_nats)
+        kl_loss = (self.kl_balance * kl_prior + (1 - self.kl_balance) * kl_post).mean()
         
         decoder = self.world_model[0][-1]
         dist = decoder.get_dist(tensordict)
@@ -151,26 +151,7 @@ class DreamerModelLoss(LossModule):
         reward_loss = -dist.log_prob(
             tensordict.get(("next", self.tensor_keys.true_reward))
         ).mean()
-        
-        #).unsqueeze(-1)
-        #reco_loss = distance_loss(
-        #    tensordict.get(("next", self.tensor_keys.pixels)),
-        #    tensordict.get(("next", self.tensor_keys.reco_pixels)),
-        #    self.reco_loss,
-        #)
-        #if not self.global_average:
-        #    reco_loss = reco_loss.sum((-3, -2, -1))
-        #reco_loss = reco_loss.mean().unsqueeze(-1)
-
-        #reward_loss = distance_loss(
-        #    tensordict.get(("next", self.tensor_keys.true_reward)),
-        #    tensordict.get(("next", self.tensor_keys.reward)),
-        #    self.reward_loss,
-        #)
-        #if not self.global_average:
-        #    reward_loss = reward_loss.squeeze(-1)
-        #reward_loss = reward_loss.mean().unsqueeze(-1)
-        ## import ipdb; ipdb.set_trace()
+    
         return (
             TensorDict(
                 {

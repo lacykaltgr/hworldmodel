@@ -111,7 +111,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
                     loss.clip_grads(grad_clip)
                     loss.grad_scaler.step(loss.optimizer)
                     loss.grad_scaler.update()
-            
+                    
             metrics_to_log = dict()
             logger.log_video(
                 "rollout/target",
