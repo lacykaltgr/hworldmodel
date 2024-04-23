@@ -98,6 +98,7 @@ class DreamerModelLoss(LossModule):
         lambda_kl: float = 2.0,
         lambda_reco: float = 1.0,
         lambda_reward: float = 1.0,
+        kl_balance: Optional[float] = None,
         reco_loss: Optional[str] = None,
         reward_loss: Optional[str] = None,
         free_nats: int = 3,
@@ -114,6 +115,7 @@ class DreamerModelLoss(LossModule):
         self.free_nats = free_nats
         self.delayed_clamp = delayed_clamp
         self.global_average = global_average
+        self.kl_balance = kl_balance
 
     def _forward_value_estimator_keys(self, **kwargs) -> None:
         pass
@@ -126,25 +128,48 @@ class DreamerModelLoss(LossModule):
         )
         tensordict = self.world_model(tensordict)
         # compute model loss
-        kl_loss = self.kl_loss(
-            tensordict.get(("next", self.tensor_keys.prior_mean)),
-            tensordict.get(("next", self.tensor_keys.prior_std)),
-            tensordict.get(("next", self.tensor_keys.posterior_mean)),
-            tensordict.get(("next", self.tensor_keys.posterior_std))
-        )
+        
+        if self.kl_balance is None:
+            kl_loss = self.kl_loss(
+                tensordict.get(("next", self.tensor_keys.prior_mean)),
+                tensordict.get(("next", self.tensor_keys.prior_std)),
+                tensordict.get(("next", self.tensor_keys.posterior_mean)),
+                tensordict.get(("next", self.tensor_keys.posterior_std)),
+            )
+            kl_loss = kl_loss.mean()
+            kl_loss = kl_loss.clamp_min(self.free_nats)
+        else:
+            kl_prior = self.kl_loss(
+                tensordict.get(("next", self.tensor_keys.prior_mean)),
+                tensordict.get(("next", self.tensor_keys.prior_std)),
+                tensordict.get(("next", self.tensor_keys.posterior_mean)).detach(),
+                tensordict.get(("next", self.tensor_keys.posterior_std)).detach()
+            )
+            kl_post = self.kl_loss(
+                tensordict.get(("next", self.tensor_keys.prior_mean)).detach(),
+                tensordict.get(("next", self.tensor_keys.prior_std)).detach(),
+                tensordict.get(("next", self.tensor_keys.posterior_mean)),
+                tensordict.get(("next", self.tensor_keys.posterior_std))
+            )
+            kl_loss = (self.kl_balance * kl_prior + (1 - self.kl_balance) * kl_post).mean()
+            
         
         decoder = self.world_model[0][-1]
         dist = decoder.get_dist(tensordict)
-        reco_loss = (-dist.log_prob(
-            tensordict.get(("next", self.tensor_keys.pixels))
-        ) / (64 * 64)).mean()
+        reco_loss = -dist.log_prob(
+            tensordict.get(("next", self.tensor_keys.pixels)),
+        )
+        
+        reco_loss = reco_loss / (64 * 64)
+        reco_loss = reco_loss.mean()
 
         reward_model = self.world_model[1]
         dist = reward_model.get_dist(tensordict)
         reward_loss = -dist.log_prob(
             tensordict.get(("next", self.tensor_keys.true_reward))
-        ).mean()
-        
+        )
+        reward_loss = reward_loss.mean()
+
         return (
             TensorDict(
                 {
@@ -164,13 +189,14 @@ class DreamerModelLoss(LossModule):
         posterior_mean: torch.Tensor,
         posterior_std: torch.Tensor,
     ) -> torch.Tensor:
-        kl = (
-            torch.log(prior_std / posterior_std)
-            + (posterior_std**2 + (prior_mean - posterior_mean) ** 2)
-            / (2 * prior_std**2)
-            - 0.5
-        ).mean()
-        return kl.clamp_min(self.free_nats)
+        prior_dist = self.get_distributions(prior_mean, prior_std)
+        posterior_dist = self.get_distributions(posterior_mean, posterior_std)
+        kl = torch.distributions.kl.kl_divergence(posterior_dist, prior_dist)
+        return kl
+    
+    
+    def get_distributions(self, mean, std):
+        return torch.distributions.Normal(mean, std)
 
 @loss(name="loss_actor")
 class DreamerActorLoss(LossModule):
@@ -252,15 +278,13 @@ class DreamerActorLoss(LossModule):
     def forward(self, tensordict: TensorDict) -> Tuple[TensorDict, TensorDict]:
         with torch.no_grad():
             
-            td = tensordict.select(("next", self.tensor_keys.state), ("next", self.tensor_keys.belief))
-            td = td.rename_key_(("next", "state"), "state")
-            td = td.rename_key_(("next", "belief"), "belief")
-            td = td.reshape(-1)
+            tensordict = tensordict.select(("next", "state"), ("next", self.tensor_keys.belief))
+            tensordict = tensordict.rename_key_(("next", "state"), "state")
+            tensordict = tensordict.rename_key_(("next", "belief"), "belief")
+            tensordict = tensordict.reshape(-1)
 
-        # TODO: do we need exploration here?
-        with hold_out_net(self.model_based_env), set_exploration_type(
-            ExplorationType.MEAN
-        ):
+        with hold_out_net(self.model_based_env), set_exploration_type(ExplorationType.MEAN):
+
             tensordict = self.model_based_env.reset(tensordict.clone(recurse=False))
             fake_data = self.model_based_env.rollout(
                 max_steps=self.imagination_horizon,
@@ -268,14 +292,13 @@ class DreamerActorLoss(LossModule):
                 auto_reset=False,
                 tensordict=tensordict,
             )
-
             next_tensordict = step_mdp(
                 fake_data,
                 keep_other=True,
             )
             with hold_out_net(self.value_model):
                 next_tensordict = self.value_model(next_tensordict)
-
+            
         reward = fake_data.get(("next", self.tensor_keys.reward))
         next_value = next_tensordict.get(self.tensor_keys.value)
         lambda_target = self.lambda_target(reward, next_value)
@@ -401,9 +424,11 @@ class DreamerValueLoss(LossModule):
 
     def forward(self, fake_data) -> torch.Tensor:
         lambda_target = fake_data.get("lambda_target")
-        td = fake_data.select(("next", "state"), ("next", "belief"))
-        td = td.rename_key_(("next", "state"), "state")
-        tensordict_select = td.rename_key_(("next", "belief"), "belief")
+        tensordict_select = fake_data.select(("next", "state"), ("next", "belief"))
+        
+        tensordict_select = tensordict_select.rename_key_(("next", "state"), "state")
+        tensordict_select = tensordict_select.rename_key_(("next", "belief"), "belief")
+
         dist = self.value_model.get_dist(tensordict_select)
         
         if self.discount_loss:
@@ -417,5 +442,6 @@ class DreamerValueLoss(LossModule):
             value_loss = -dist.log_prob(lambda_target).mean()
 
         loss_tensordict = TensorDict({"loss_value": value_loss}, [])
-        return loss_tensordict, fake_data
+
+        return loss_tensordict, fake_data.detach()
 

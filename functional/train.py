@@ -12,7 +12,7 @@ from torchrl.record.loggers import generate_exp_name, get_logger
 from architectures import ArchitectureConfig
 
 
-@hydra.main(version_base="1.1", config_path="../configs/dreamerV2", config_name="config")
+@hydra.main(version_base="1.1", config_path="../configs/discrete_wm", config_name="discrete")
 def main(cfg: "DictConfig"):  # noqa: F821
     # cfg = correct_for_frame_skip(cfg)
 
@@ -42,9 +42,15 @@ def main(cfg: "DictConfig"):  # noqa: F821
     architecture_module = import_module(cfg.architecture.module)
     architecture = getattr(architecture_module, cfg.architecture.name)
     model: ArchitectureConfig = architecture(cfg, device)
+    
+    print("warning: using random policy")
+    from torchrl.collectors.collectors import RandomPolicy
+    policy = RandomPolicy(train_env.action_spec)
+    
+    # policy = model.policy
 
     # Make collector
-    collector = make_collector(cfg, train_env, model.policy)
+    collector = make_collector(cfg, train_env, policy)
 
     # Make replay buffer
     replay_buffer = make_replay_buffer(
@@ -113,7 +119,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
                     loss.grad_scaler.update()
                     
                 model.update(step=i)
-            
+
             metrics_to_log = dict()
             logger.log_video(
                 "rollout/target",
@@ -138,7 +144,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
         if logger is not None:
             log_metrics(logger, metrics_to_log, collected_frames)
 
-        model.policy.step(current_frames) # exploration policy annealing
+        #model.policy.step(current_frames) # exploration policy annealing
         collector.update_policy_weights_()
         
         # Evaluation
@@ -160,19 +166,20 @@ def main(cfg: "DictConfig"):  # noqa: F821
                         (eval_rollout["pixels"] * 255).detach().cpu().to(torch.uint8),
                     )
                     
-                with autocast(dtype=torch.float16):
-                    imgn_td = eval_rollout.select("state", "belief", ("next", "reward")).to(device)
-                    imgn_td = model.parts["model_based_env"].to(device).rollout(
-                        max_steps=100,
-                        policy=model.parts["actor_simulator"],
-                        auto_reset=False,
-                        tensordict=imgn_td[:, 0],
-                    )
-                    reco_pixels = model.parts["model_based_env"].decode_obs(imgn_td)["next", "reco_pixels"]
-                    logger.log_video(
-                        "eval/rollout/simulated",
-                        (reco_pixels * 255).detach().cpu().to(torch.uint8),
-                    )
+                #with autocast(dtype=torch.float16):
+                #    imgn_td = eval_rollout.select("state", "belief", ("next", "reward")).to(device)
+                #    imgn_td = model.parts["model_based_env"].to(device).rollout(
+                #        max_steps=100,
+                #        #policy=model.parts["actor_simulator"],
+                #        policy=RandomPolicy(model.parts["model_based_env"].action_spec),
+                #        auto_reset=False,
+                #        tensordict=imgn_td[:, 0],
+                #    )
+                #    reco_pixels = model.parts["model_based_env"].decode_obs(imgn_td)["next", "reco_pixels"]
+                #    logger.log_video(
+                #        "eval/rollout/simulated",
+                #        (reco_pixels * 255).detach().cpu().to(torch.uint8),
+                #    )
 
 if __name__ == "__main__":
     main()

@@ -148,8 +148,8 @@ class DreamerModelLoss(LossModule):
         if self.free_nats > 0.0:
             kl_prior = kl_prior.clamp_min(min=self.free_nats)
             kl_post = kl_post.clamp_min(min=self.free_nats)
-        
-        kl_loss = self.kl_balance * kl_prior + (1 - self.kl_balance) * kl_post
+
+        kl_loss = (self.kl_balance * kl_prior + (1 - self.kl_balance) * kl_post).mean()
 
         # reward loss
         reward_model = self.world_model[1]
@@ -157,7 +157,7 @@ class DreamerModelLoss(LossModule):
         reward_loss = -dist.log_prob(
             tensordict.get(("next", self.tensor_keys.true_reward))
         ).mean()
-        
+
         return (
             TensorDict(
                 {

@@ -39,15 +39,6 @@ class DreamerEnv(ModelBasedEnvBase):
     def set_specs_from_env(self, env: EnvBase):
         """Sets the specs of the environment from the specs of the given environment."""
         super().set_specs_from_env(env)
-        # self.observation_spec = CompositeSpec(
-        #     next_state=UnboundedContinuousTensorSpec(
-        #         shape=self.prior_shape, device=self.device
-        #     ),
-        #     next_belief=UnboundedContinuousTensorSpec(
-        #         shape=self.belief_shape, device=self.device
-        #     ),
-        # )
-        # TODO: this is already set in the parent class
         self.action_spec = self.action_spec.to(self.device)
         self.state_spec = CompositeSpec(
             state=self.observation_spec["state"],
@@ -58,11 +49,9 @@ class DreamerEnv(ModelBasedEnvBase):
     def _reset(self, tensordict=None, **kwargs) -> TensorDict:
         batch_size = tensordict.batch_size if tensordict is not None else []
         device = tensordict.device if tensordict is not None else self.device
-        
-        # TODO: why do we overright here incoming belief and states that are correct
         if tensordict is None:
             td = self.state_spec.rand(shape=batch_size)
-            # why dont we reuse actions taken at those steps?
+
             td.set("action", self.action_spec.rand(shape=batch_size))
             td[("next", "reward")] = self.reward_spec.rand(shape=batch_size)
             td.update(self.observation_spec.rand(shape=batch_size))
