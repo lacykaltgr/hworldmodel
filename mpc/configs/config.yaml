@@ -1,0 +1,38 @@
+mpc
+  iter_n: 20
+  precond: False
+  grad_clip: 0.0
+  grad_norm: False
+  bias: 0
+  scale: 1
+
+  constraints:
+    - name: L2Constraint
+      kwargs:
+        eps: 1e-6
+        weight: 1.0
+    - name: BoxConstraint
+      kwargs:
+        min_val: 0
+        max_val: 1
+
+  transforms:
+    - name: Normalize
+      kwargs:
+        mean: 0
+        std: 1
+    - name: ToTensor
+
+  pre_opt_transforms:
+    - name: Normalize
+      kwargs:
+        mean: 0
+        std: 1
+    - name: ToTensor
+
+  post_opt_transforms:
+    - name: Denormalize
+      kwargs:
+        mean: 0
+        std: 1
+    - name: ToTensor

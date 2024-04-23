@@ -8,6 +8,7 @@ class ArchitectureConfig(Module, ABC):
     parts: Any
     losses: Any
     
+    
     @abstractmethod
     def update(self, step):
         pass
