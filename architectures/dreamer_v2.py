@@ -14,7 +14,6 @@ from torchrl.modules import (
 )
 from torchrl.modules.distributions import IndependentNormal, TanhNormal
 from torchrl.modules.models.model_based import (
-    DreamerActor,
     ObsDecoder,
     ObsEncoder,
     RSSMRollout,
@@ -27,6 +26,7 @@ from losses.dreamer_losses_v2 import *
 from . import ArchitectureConfig
 from envs.dreamer_env import DreamerEnv
 from modules.rssm_v2 import RSSMPriorV2, RSSMPosteriorV2
+from modules.actor import DreamerActorV2
 from modules.blocks import LocScaleDist
 import copy
 
@@ -35,6 +35,7 @@ class DreamerV2(ArchitectureConfig):
     
     def __init__(self, config, device):
         super(DreamerV2, self).__init__()
+        print("DreamerV2")
         test_env = make_env(config, device="cpu")
         test_env = transform_env(config, test_env, parallel_envs=1, dummy=True)
         
@@ -76,7 +77,7 @@ class DreamerV2(ArchitectureConfig):
                 rssm_prior = RSSMPriorV2(hidden_dim=hidden_dim, rnn_hidden_dim=rssm_dim, state_vars=state_vars, state_classes=state_classes, action_spec=action_spec),
                 rssm_posterior = RSSMPosteriorV2(hidden_dim=rssm_dim, state_vars=state_vars, state_classes=state_classes),
                 reward_model = MLP(out_features=1, depth=mlp_depth, num_cells=mlp_dims, activation_class=activation),
-                actor_model = DreamerActor(out_features=action_spec.shape[-1], depth=mlp_depth, num_cells=mlp_dims, activation_class=activation, std_bias=0.0, std_min_val=0.1),
+                actor_model = DreamerActorV2(out_features=action_spec.shape[-1], depth=mlp_depth, num_cells=mlp_dims, activation_class=activation, std_min_val=0.1),
                 value_model = value_model,
                 value_target = value_target
             )
@@ -121,7 +122,9 @@ class DreamerV2(ArchitectureConfig):
     def _init_losses(self, config):
         losses = nn.ModuleDict(dict(
             world_model = DreamerModelLoss(
-                self.parts["world_model"]
+                self.parts["world_model"],
+                lambda_kl=2.0,
+                free_nats=1.0
             ).with_optimizer(params=self.parts["world_model"].parameters(), 
                              lr=config.optimization.world_model_lr, weight_decay=1e-6),
             
@@ -181,7 +184,7 @@ class DreamerV2(ArchitectureConfig):
             out_key=self.keys["action_key"],
             net=self.networks["actor_model"],
             distribution_class=TanhNormal,
-            distribution_kwargs={"tanh_loc": True, "upscale": 5.0},
+            distribution_kwargs={"tanh_loc": True},
             spec = proof_environment.action_spec,
             default_interaction_type=InteractionType.RANDOM
         )
@@ -212,7 +215,7 @@ class DreamerV2(ArchitectureConfig):
                 out_key=action_key,
                 net=nets["actor_model"],
                 distribution_class=TanhNormal,
-                distribution_kwargs={"tanh_loc": True, "upscale": 5.0},
+                distribution_kwargs={"tanh_loc": True},
                 spec=proof_environment.action_spec, 
             ),
             SafeModule(

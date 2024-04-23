@@ -84,16 +84,19 @@ def transform_env(cfg, env, parallel_envs, dummy=False):
 
 def make_environments(cfg, device, parallel_envs=1):
     """Make environments for training and evaluation."""
-    
+    print("make_environments")
     train_env = ParallelEnv(
         parallel_envs,
         EnvCreator(lambda cfg=cfg: make_env(cfg, device=device)),
     )
     train_env = transform_env(cfg, train_env, parallel_envs)
     train_env.set_seed(cfg.env.seed)
+    
+    
+    print("train")
     eval_env = ParallelEnv(
         parallel_envs,
-        EnvCreator(lambda cfg=cfg: make_env(cfg, device=device)),
+        EnvCreator(lambda cfg=cfg: make_env(cfg, device=device))
     )
     eval_env = transform_env(cfg, eval_env, parallel_envs)
     eval_env.set_seed(cfg.env.seed + 1)

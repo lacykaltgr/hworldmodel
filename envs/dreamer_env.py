@@ -61,11 +61,17 @@ class DreamerEnv(ModelBasedEnvBase):
         
         # TODO: why do we overright here incoming belief and states that are correct
         if tensordict is None:
-            td = self.state_spec.rand(shape=batch_size).to(device)
+            td = self.state_spec.rand(shape=batch_size)
             # why dont we reuse actions taken at those steps?
-            td.set("action", self.action_spec.rand(shape=batch_size).to(device))
-            td[("next", "reward")] = self.reward_spec.rand(shape=batch_size).to(device)
-            td.update(self.observation_spec.rand(shape=batch_size).to(device))
+            td.set("action", self.action_spec.rand(shape=batch_size))
+            td[("next", "reward")] = self.reward_spec.rand(shape=batch_size)
+            td.update(self.observation_spec.rand(shape=batch_size))
+            if device is not None:
+                td = td.to(device, non_blocking=True)
+                if torch.cuda.is_available() and device.type == "cpu":
+                    torch.cuda.synchronize()
+                elif torch.backends.mps.is_available():
+                    torch.mps.synchronize()
         else:
             td = tensordict.clone()
         return td

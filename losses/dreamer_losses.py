@@ -95,7 +95,7 @@ class DreamerModelLoss(LossModule):
         self,
         world_model: TensorDictModule,
         *,
-        lambda_kl: float = 1.0,
+        lambda_kl: float = 2.0,
         lambda_reco: float = 1.0,
         lambda_reward: float = 1.0,
         reco_loss: Optional[str] = None,

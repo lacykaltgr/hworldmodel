@@ -78,7 +78,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
 
         if uint8_casting and pixel_obs:
             tensordict = cast_to_uint8(tensordict)
-
+            
         ep_reward = tensordict.get("episode_reward")[:, -1]
         replay_buffer.extend(tensordict.cpu())
 
