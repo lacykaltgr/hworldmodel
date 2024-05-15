@@ -38,7 +38,7 @@ optimization:
   use_autocast: True
 
 networks:
-  exploration_noise: 0
+  value_estimator: reward # one of (reward[R=r_i, V=sum(r_i)], value[V=TD(V, r_u)], both) 
   device:
     _target_: utils._default_device
     device: null

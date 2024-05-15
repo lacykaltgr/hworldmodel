@@ -5,10 +5,8 @@
 from dataclasses import dataclass
 import numpy as np
 from typing import Optional, Tuple
-import timeit
 
 import torch
-import torchrl
 from tensordict import TensorDict
 from tensordict.nn import TensorDictModule
 from tensordict.utils import NestedKey
@@ -34,57 +32,9 @@ from torchrl.envs.utils import step_mdp
 
 @loss
 class DreamerModelLoss(LossModule):
-    """Dreamer Model Loss.
-
-    Computes the loss of the dreamer world model. The loss is composed of the
-    kl divergence between the prior and posterior of the RSSM,
-    the reconstruction loss over the reconstructed observation and the reward
-    loss over the predicted reward.
-
-    Reference: https://arxiv.org/abs/1912.01603.
-
-    Args:
-        world_model (TensorDictModule): the world model.
-        lambda_kl (float, optional): the weight of the kl divergence loss. Default: 1.0.
-        lambda_reco (float, optional): the weight of the reconstruction loss. Default: 1.0.
-        lambda_reward (float, optional): the weight of the reward loss. Default: 1.0.
-        reco_loss (str, optional): the reconstruction loss. Default: "l2".
-        reward_loss (str, optional): the reward loss. Default: "l2".
-        free_nats (int, optional): the free nats. Default: 3.
-        delayed_clamp (bool, optional): if ``True``, the KL clamping occurs after
-            averaging. If False (default), the kl divergence is clamped to the
-            free nats value first and then averaged.
-        global_average (bool, optional): if ``True``, the losses will be averaged
-            over all dimensions. Otherwise, a sum will be performed over all
-            non-batch/time dimensions and an average over batch and time.
-            Default: False.
-    """
 
     @dataclass
     class _AcceptedKeys:
-        """Maintains default values for all configurable tensordict keys.
-
-        This class defines which tensordict keys can be set using '.set_keys(key_name=key_value)' and their
-        default values
-
-        Attributes:
-            reward (NestedKey): The reward is expected to be in the tensordict
-                key ("next", reward). Defaults to ``"reward"``.
-            true_reward (NestedKey): The `true_reward` will be stored in the
-                tensordict key ("next", true_reward). Defaults to ``"true_reward"``.
-            prior_mean (NestedKey): The prior mean is expected to be in the
-                tensordict key ("next", prior_mean). Defaults to ``"prior_mean"``.
-            prior_std (NestedKey): The prior mean is expected to be in the
-                tensordict key ("next", prior_mean). Defaults to ``"prior_mean"``.
-            posterior_mean (NestedKey): The posterior mean is expected to be in
-                the tensordict key ("next", prior_mean). Defaults to ``"posterior_mean"``.
-            posterior_std (NestedKey): The posterior std is expected to be in
-                the tensordict key ("next", prior_mean). Defaults to ``"posterior_std"``.
-            pixels (NestedKey): The pixels is expected to be in the tensordict key ("next", pixels).
-                Defaults to ``"pixels"``.
-            reco_pixels (NestedKey): The reconstruction pixels is expected to be
-                in the tensordict key ("next", reco_pixels). Defaults to ``"reco_pixels"``.
-        """
 
         reward: NestedKey = "reward"
         true_reward: NestedKey = "true_reward"
@@ -133,7 +83,6 @@ class DreamerModelLoss(LossModule):
         pass
 
     def forward(self, tensordict: TensorDict) -> torch.Tensor:
-        #tensordict = tensordict.clone(recurse=False)
         tensordict.rename_key_(
             ("next", self.tensor_keys.reward),
             ("next", self.tensor_keys.true_reward),
@@ -212,7 +161,7 @@ class DreamerModelLoss(LossModule):
     
 
 @loss
-class MPPIValueLoss(LossModule):
+class MPCValueLoss(LossModule):
     @dataclass
     class _AcceptedKeys:
         belief: NestedKey = "belief"

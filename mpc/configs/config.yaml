@@ -1,4 +1,4 @@
-mpc
+mpc:
   iter_n: 20
   precond: False
   grad_clip: 0.0

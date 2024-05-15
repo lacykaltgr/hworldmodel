@@ -57,7 +57,7 @@ class MPC(nn.Module):
         self.post_opt_transforms = post_opt_transforms
         
 
-    def run(self, n_samples, init=None):
+    def run(self, n_samples, init=None, operation_kwargs=None):
         proposal = Proposal(
             shape=self.shape,
             n_samples=n_samples,
@@ -72,7 +72,8 @@ class MPC(nn.Module):
         for i in range(self.iter_n):
 
             step_results = self.optmizer_step(
-                proposal, step_i=i, optimizer=optimizer, scheduler=scheduler
+                proposal, step_i=i, optimizer=optimizer, scheduler=scheduler,
+                operation_kwargs=operation_kwargs
             )
 
             if i % self.log_interval == 0:
@@ -82,11 +83,12 @@ class MPC(nn.Module):
                     results = {key: torch.cat(
                         [results[key], step_results[key]], dim=0) for key in results.keys()
                                }
-        return results
+        optimized = proposal()
+        return optimized, results
 
 
     
-    def optimizer_step(self, proposal, step_i, optimizer, scheduler=None):
+    def optimizer_step(self, proposal, step_i, optimizer, operation_kwargs=None):
         """
         Update meitorch in place making a gradient ascent step in the output of net.
 
@@ -96,6 +98,7 @@ class MPC(nn.Module):
         :param add_loss: An additional term to add to the network activation before
                             calling backward on it. Usually, some regularization.
         """
+        
         step_dict = dict()
         optimizer.zero_grad()
         
@@ -111,7 +114,10 @@ class MPC(nn.Module):
             
         step_dict["pre_opt_proposal"] = inputs.detach()
 
-        outputs_dict = self.operation(inputs)
+        if operation_kwargs is None:
+            outputs_dict = self.operation(inputs)
+        else:
+            outputs_dict = self.operation(inputs, **operation_kwargs)
         loss = outputs_dict["loss"].mean()
 
         # TODO: only accept gradients if loss is ...
