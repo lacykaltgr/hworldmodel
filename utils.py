@@ -156,7 +156,7 @@ def make_replay_buffer(
     buffer_size=1000000,
     buffer_scratch_dir=None,
     device=None,
-    prefetch=10,
+    prefetch=2,
     pixel_obs=True,
     grayscale=True,
     image_size,

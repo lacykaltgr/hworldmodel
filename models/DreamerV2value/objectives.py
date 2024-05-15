@@ -134,9 +134,7 @@ class DreamerModelLoss(LossModule):
         reward = tensordict.get(("next", self.tensor_keys.reward))
         value = tensordict.get(("next", self.tensor_keys.value))
         next_value = tensordict.get(("next", self.tensor_keys.value))
-        
-        with torch.no_grad():
-            lambda_target = self.lambda_target(reward, next_value).detach()
+        lambda_target = self.lambda_target(reward, next_value).detach()
         
         if self.discount_loss:
             discount = self.gamma * torch.ones_like(
@@ -163,7 +161,7 @@ class DreamerModelLoss(LossModule):
                 },
                 [],
             ),
-            tensordict.detach(),
+            tensordict,
         )
 
     def kl_loss(
@@ -280,7 +278,7 @@ class DreamerActorLoss(LossModule):
         pass
 
     def forward(self, tensordict: TensorDict) -> Tuple[TensorDict, TensorDict]:
-        tensordict = tensordict.select("state", self.tensor_keys.belief)
+        tensordict = tensordict.select("state", self.tensor_keys.belief).detach()
         tensordict = tensordict.reshape(-1)
         
         with hold_out_net(self.model_based_env):

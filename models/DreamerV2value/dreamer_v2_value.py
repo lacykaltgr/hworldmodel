@@ -55,7 +55,6 @@ class DreamerV2value:
     def update(self, step):
         with torch.no_grad():
             if 10*step % self.slow_critic_update == 0:
-                print("Updating value target")
                 self.networks["value_target"].load_state_dict(self.networks["value_model"].state_dict())
         
     def _init_networks(self, config, proof_env):
