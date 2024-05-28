@@ -131,10 +131,11 @@ class DreamerModelLoss(LossModule):
         reco_loss = reco_loss.mean().unsqueeze(-1)
         
         
-        reward = tensordict.get(("next", self.tensor_keys.reward))
-        value = tensordict.get(("next", self.tensor_keys.value))
-        next_value = tensordict.get(("next", self.tensor_keys.value))
+        reward = tensordict.get(("next", self.tensor_keys.reward))[:, :-1]
+        value = tensordict.get(("next", self.tensor_keys.value))[:, :-1]
+        next_value = tensordict.get(("next", self.tensor_keys.value))[:, 1:]
         lambda_target = self.lambda_target(reward, next_value).detach()
+        
         
         if self.discount_loss:
             discount = self.gamma * torch.ones_like(

@@ -25,7 +25,7 @@ collector:
 optimization:
   grad_clip: 100
   world_model_lr: 3e-4
-  actor_lr: 1e-4
+  #actor_lr: 1e-4
   value_lr: 1e-4
   kl_scale: 0.8 # different from original impl. (kl_balance there)
   free_nats: 1.0
@@ -52,8 +52,8 @@ planner:
   planning_horizon: 3
   temperature: 0.5
   n_candidates: 8
-  top_k: 4
-  optim_steps: 6
+  top_k: 3
+  optim_steps: 10
 
   
 replay_buffer: 

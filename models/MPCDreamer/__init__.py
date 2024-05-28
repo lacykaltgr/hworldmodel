@@ -69,12 +69,7 @@ def make_model(
 
         world_model_loss.loss_module.apply(compile_rssms)
     
-    losses = nn.ModuleDict(
-        {
-            "world_model": world_model_loss,
-            "actor": actor_loss,
-        }
-    )
+    
     policy = model.modules["policy"]
     mb_env = model.modules["model_based_env"]
     

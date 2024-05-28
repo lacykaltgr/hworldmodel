@@ -39,7 +39,7 @@ def make_model(
     ).with_optimizer(
         opt_module=model.modules["value_model"],
         optimizer_cls=torch.optim.AdamW,
-        optimizer_kwargs={"lr": cfg.optimization.actor_lr, "weight_decay": 10e-4, "eps": 10e-5},
+        optimizer_kwargs={"lr": cfg.optimization.value_lr, "weight_decay": 10e-4, "eps": 10e-5},
         use_grad_scaler=cfg.optimization.use_autocast
     )
     
