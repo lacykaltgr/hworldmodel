@@ -24,8 +24,11 @@ from torchrl._utils import timeit
 from torchrl.envs.utils import ExplorationType, set_exploration_type
 from torchrl.record.loggers import generate_exp_name, get_logger
 
+import os
+os.environ['BATCHED_PIPE_TIMEOUT'] = str(999999)
 
-@hydra.main(version_base="1.1", config_path="models/MPPIDreamer/configs", config_name="config")
+
+@hydra.main(version_base="1.1", config_path="models/DreamerV2_liquid/configs", config_name="config")
 def main(cfg: "DictConfig"):  # noqa: F821
     # cfg = correct_for_frame_skip(cfg)
 
