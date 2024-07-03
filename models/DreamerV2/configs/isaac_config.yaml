@@ -8,9 +8,9 @@ env:
   grayscale: False
   image_size : 64
   horizon: 500
-  n_parallel_envs: 5
+  n_parallel_envs: 7
   device: 
-    _target_: utils._default_device
+    _target_: hworldmodel.utils._default_device
     device: null
 
 collector:
@@ -19,7 +19,7 @@ collector:
   init_random_frames: 5000
   frames_per_batch: 250
   device:
-    _target_: utils._default_device
+    _target_: hworldmodel.utils._default_device
     device: null
 
 optimization:
@@ -40,7 +40,7 @@ optimization:
 networks:
   exploration_noise: 0
   device:
-    _target_: utils._default_device
+    _target_: hworldmodel.utils._default_device
     device: null
   state_dim: 32
   state_vars: 32

@@ -10,7 +10,7 @@ import torch
 import torch.cuda
 import tqdm
 import models
-from utils import (
+from .utils import (
     dump_video,
     log_metrics,
     make_collector,
@@ -30,7 +30,7 @@ import os
 os.environ['BATCHED_PIPE_TIMEOUT'] = str(999999)
 
 
-@hydra.main(version_base="1.1", config_path="models/DreamerV2_liquid/configs", config_name="config")
+@hydra.main(version_base="1.1", config_path="models/DreamerV2/configs", config_name="isaac_config")
 def main(cfg: "DictConfig"):  # noqa: F821
     # cfg = correct_for_frame_skip(cfg)
 
@@ -56,8 +56,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
         )
     else:
         train_env = make_isaac_environments(
-            cfg=cfg,
-            logger=logger,
+            cfg=cfg
         )
 
     

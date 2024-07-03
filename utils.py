@@ -64,7 +64,7 @@ def _make_env(cfg, device, from_pixels=False):
         )
     elif lib == "isaac_lab":
         env = IsaacEnv(
-            cfg.env_name,
+            cfg.env.name,
             num_envs=cfg.env.n_parallel_envs,
         )
     else:
@@ -135,12 +135,8 @@ def is_isaac_env(cfg):
     return cfg.env.backend == "isaac_lab"
 
 def make_isaac_environments(cfg):
-    func = functools.partial(_make_env, cfg=cfg, device=cfg.env.device)
-    train_env = ParallelEnv(
-        1,
-        EnvCreator(func),
-        serial_for_single=True,
-    )
+    #func = functools.partial(_make_env, cfg=cfg, device=cfg.env.device)
+    train_env = _make_env(cfg=cfg, device=cfg.env.device)
     train_env = transform_env(cfg, train_env)
     train_env.set_seed(cfg.env.seed)
     check_env_specs(train_env)

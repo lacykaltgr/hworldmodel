@@ -23,7 +23,7 @@ from torchrl.data import (
 from torchrl.modules.tensordict_module.world_models import WorldModelWrapper
 from common.distributions import TruncNormalDist
 
-from utils import _make_env, transform_env, get_activation
+from .. import _make_env, transform_env, get_activation
 from .modules import (
     RSSMPriorV2, 
     RSSMPosteriorV2,
