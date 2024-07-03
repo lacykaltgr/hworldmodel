@@ -42,6 +42,7 @@ from torchrl.envs import (
 )
 from torchrl.envs.utils import check_env_specs
 from torchrl.record import VideoRecorder
+from isaac.wrapper import IsaacEnv
 
 
 def _make_env(cfg, device, from_pixels=False):
@@ -60,6 +61,11 @@ def _make_env(cfg, device, from_pixels=False):
             cfg.env.task,
             from_pixels=cfg.env.from_pixels or from_pixels,
             pixels_only=cfg.env.from_pixels,
+        )
+    elif lib == "isaac_lab":
+        env = IsaacEnv(
+            cfg.env_name,
+            num_envs=cfg.env.n_parallel_envs,
         )
     else:
         raise NotImplementedError(f"Unknown lib {lib}.")
@@ -125,12 +131,24 @@ def make_environments(cfg, parallel_envs=1, logger=None):
     check_env_specs(eval_env)
     return train_env, eval_env
 
+def is_isaac_env(cfg):
+    return cfg.env.backend == "isaac_lab"
+
+def make_isaac_environments(cfg):
+    func = functools.partial(_make_env, cfg=cfg, device=cfg.env.device)
+    train_env = ParallelEnv(
+        1,
+        EnvCreator(func),
+        serial_for_single=True,
+    )
+    train_env = transform_env(cfg, train_env)
+    train_env.set_seed(cfg.env.seed)
+    check_env_specs(train_env)
+    return train_env
 
 def dump_video(module):
     if isinstance(module, VideoRecorder):
         module.dump()
-
-
 
 def make_collector(cfg, train_env, actor_model_explore):
     """Make collector."""
