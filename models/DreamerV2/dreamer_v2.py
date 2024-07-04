@@ -38,9 +38,7 @@ import copy
 
 class DreamerV2:
     
-    def __init__(self, config, device):
-        test_env = _make_env(config, device="cpu")
-        test_env = transform_env(config, test_env)
+    def __init__(self, config, test_env, device):
         
         self.keys = dict(
             observation_in_key = "pixels" if config.env.from_pixels else "observation",
@@ -90,14 +88,17 @@ class DreamerV2:
         value_model, value_target  = self._dreamer_make_value_model()
         value_model, value_target = value_model.to(device), value_target.to(device)
         model_based_env = self._dreamer_make_mbenv(
-            proof_env, state_dim=config.networks.state_dim, rssm_hidden_dim=config.networks.rssm_hidden_dim
-        ).to(device)
+            proof_env, state_dim=config.networks.state_dim, rssm_hidden_dim=config.networks.rssm_hidden_dim, device=device
+        )
         
         
         # Initialize world model
         with torch.no_grad(), set_exploration_type(ExplorationType.RANDOM):
             tensordict = (proof_env.rollout(5, auto_cast_to_device=True).unsqueeze(-1).to(world_model.device))
             tensordict = tensordict.to_tensordict()
+            if len(tensordict.shape) == 3:
+                # for isaac_lab envs where paralellization is handled by the env
+                tensordict = tensordict[0]
             world_model(tensordict)
             
         # Initialize model-based environment, actor_simulator, value_model
@@ -221,7 +222,7 @@ class DreamerV2:
 
 
     
-    def _dreamer_make_mbenv(self, test_env, use_decoder_in_env: bool = True, state_dim: int = 30, rssm_hidden_dim: int = 200):
+    def _dreamer_make_mbenv(self, test_env, use_decoder_in_env: bool = True, state_dim: int = 30, rssm_hidden_dim: int = 200, device: str = "cuda"):
         
         # MB environment
         if use_decoder_in_env:
@@ -255,6 +256,7 @@ class DreamerV2:
             prior_shape=torch.Size([state_dim]),
             belief_shape=torch.Size([rssm_hidden_dim]),
             obs_decoder=mb_env_obs_decoder,
+            device=device
         )
 
         model_based_env.set_specs_from_env(test_env)

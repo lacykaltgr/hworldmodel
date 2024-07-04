@@ -90,8 +90,8 @@ class DreamerModelLoss(LossModule):
         true_reward: NestedKey = "true_reward"
         prior: NestedKey = "prior_logits"
         posterior: NestedKey = "posterior_logits"
-        pixels: NestedKey = "pixels"
-        reco_pixels: NestedKey = "reco_pixels"
+        pixels: NestedKey = "observation"
+        reco_pixels: NestedKey = "observation"
 
     default_keys = _AcceptedKeys()
 

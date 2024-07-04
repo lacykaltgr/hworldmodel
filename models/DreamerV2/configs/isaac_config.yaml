@@ -1,14 +1,14 @@
 env:
-  name: Isaac-Cartpole-v0
+  name: Isaac-Ant-v0
   task: 
   seed: 0
   backend: isaac_lab
   frame_skip: 2
-  from_pixels: True
+  from_pixels: False
   grayscale: False
   image_size : 64
   horizon: 500
-  n_parallel_envs: 7
+  n_parallel_envs: 100
   device: 
     _target_: hworldmodel.utils._default_device
     device: null
@@ -16,8 +16,8 @@ env:
 collector:
   total_frames: 5_000_000
   pretrain: 100
-  init_random_frames: 5000
-  frames_per_batch: 250
+  init_random_frames: 25000
+  frames_per_batch: 25000
   device:
     _target_: hworldmodel.utils._default_device
     device: null
@@ -44,8 +44,8 @@ networks:
     device: null
   state_dim: 32
   state_vars: 32
-  rssm_hidden_dim: 200
-  hidden_dim: 400
+  rssm_hidden_dim: 50
+  hidden_dim: 100
   activation: "elu"
 
 

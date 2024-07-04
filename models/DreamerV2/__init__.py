@@ -12,9 +12,10 @@ def make_model(
     cfg,
     device,
     logger,
+    test_env
 ):
     # Model
-    model = DreamerV2(cfg, device)
+    model = DreamerV2(cfg, test_env, device)
 
     # Losses
     world_model_loss = DreamerModelLoss(

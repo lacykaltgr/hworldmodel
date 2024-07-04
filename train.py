@@ -58,13 +58,13 @@ def main(cfg: "DictConfig"):  # noqa: F821
         train_env = make_isaac_environments(
             cfg=cfg
         )
-
     
     model_module = getattr(models, cfg.logger.model_name)
     losses, policy, mb_env, callback = model_module.make_model(
         cfg=cfg,
         device=device,
-        logger=logger
+        logger=logger,
+        test_env=test_env if not is_isaaclab_env else train_env,
     )
 
     # Make collector

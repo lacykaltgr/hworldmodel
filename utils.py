@@ -45,6 +45,7 @@ from torchrl.record import VideoRecorder
 from isaac.wrapper import IsaacEnv
 
 
+
 def _make_env(cfg, device, from_pixels=False):
     lib = cfg.env.backend
     if lib in ("gym", "gymnasium"):
@@ -100,7 +101,7 @@ def transform_env(cfg, env):
     env.append_transform(DoubleToFloat())
     env.append_transform(RewardSum())
     env.append_transform(FrameSkipTransform(cfg.env.frame_skip))
-    env.append_transform(StepCounter(cfg.env.horizon))
+    #env.append_transform(StepCounter(cfg.env.horizon))
 
     return env
 
@@ -214,10 +215,10 @@ def make_replay_buffer(
             ),
             sampler=SliceSampler(
                 slice_len=batch_seq_len,
-                strict_length=False,
+                strict_length=True,
                 traj_key=("collector", "traj_ids"),
                 cache_values=True,
-                compile=True,
+                compile=False, # TODO: set it to False for isaac_lab experiments
             ),
             transform=transforms,
             batch_size=batch_size,
@@ -247,7 +248,7 @@ def get_activation(name):
 def _default_device(device=None):
     if device in ("", None):
         if torch.cuda.is_available():
-            return torch.device("cuda")
+            return torch.device("cuda:0")
         return torch.device("cpu")
     return torch.device(device)
 

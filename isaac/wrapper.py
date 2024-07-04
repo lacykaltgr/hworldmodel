@@ -26,11 +26,12 @@ class IsaacEnv(GymWrapper):
             
         env_cfg = parse_env_cfg(env_name, use_gpu=True, num_envs=num_envs, use_fabric=use_fabric)
         env = gym.make(env_name, cfg=env_cfg)
+
         env = GymIsaacWrapper(env)
         env.seed(seed=seed)
         super().__init__(
             env, 
-            device="cuda",
+            device=torch.device("cuda:0"),
             **kwargs
         )
 
@@ -93,8 +94,8 @@ class GymIsaacWrapper(VectorEnv):
         # Obtain gym spaces
         observation_space = self.unwrapped.single_observation_space["policy"]
         action_space = self.unwrapped.single_action_space
-        if isinstance(action_space, spaces.Box) and not action_space.is_bounded("both"):
-            action_space = spaces.Box(low=-100, high=100, shape=action_space.shape)
+        if isinstance(action_space, gym.spaces.Box) and not action_space.is_bounded("both"):
+            action_space = gym.spaces.Box(low=-100, high=100, shape=action_space.shape)
 
         # Initialize vec-env
         VectorEnv.__init__(self, self.num_envs, observation_space, action_space)
@@ -102,43 +103,15 @@ class GymIsaacWrapper(VectorEnv):
         self._ep_rew_buf = torch.zeros(self.num_envs, device=self.sim_device)
         self._ep_len_buf = torch.zeros(self.num_envs, device=self.sim_device)
 
-    def __str__(self):
-        """Returns the wrapper name and the :attr:`env` representation string."""
-        return f"<{type(self).__name__}{self.env}>"
-
-    def __repr__(self):
-        """Returns the string representation of the wrapper."""
-        return str(self)
-
-    @classmethod
-    def class_name(cls) -> str:
-        """Returns the class name of the wrapper."""
-        return cls.__name__
-
-    @property
-    def unwrapped(self) -> ManagerBasedRLEnv:
-        """Returns the base environment of the wrapper.
-
-        This will be the bare :class:`gymnasium.Env` environment, underneath all layers of wrappers.
-        """
-        return self.env.unwrapped
-
-    def get_episode_rewards(self) -> list[float]:
-        """Returns the rewards of all the episodes."""
-        return self._ep_rew_buf.cpu().tolist()
-
-    def get_episode_lengths(self) -> list[int]:
-        """Returns the number of time-steps of all the episodes."""
-        return self._ep_len_buf.cpu().tolist()
 
     def seed(self, seed: int | None = None) -> list[int | None]:  # noqa: D102
         return [self.unwrapped.seed(seed)] * self.unwrapped.num_envs
 
-    def reset(self, seed: int | None = None, options: dict = None) -> VecEnvObs:  # noqa: D102
-        obs_dict, _ = self.env.reset(seed=seed, options=options)
+    def reset(self, seed: int | None = None, options: dict = None):  # noqa: D102
+        obs_dict, info = self.env.reset(seed=seed, options=options)
         # Convert data types to numpy depending on backend
-        return self._process_obs(obs_dict)
-
+        return self._process_obs(obs_dict), info
+    
     def step_async(self, actions):  # noqa: D102
         # Convert input to numpy array
         if not isinstance(actions, torch.Tensor):
@@ -149,7 +122,7 @@ class GymIsaacWrapper(VectorEnv):
         # Store the actions
         self._async_actions = actions
 
-    def step_wait(self) -> VecEnvStepReturn:  # noqa: D102
+    def step_wait(self):  # noqa: D102
         # Record step information
         obs_dict, rew, terminated, truncated, extras = self.env.step(self._async_actions)
         # Update episode un-discounted return and length
@@ -164,15 +137,16 @@ class GymIsaacWrapper(VectorEnv):
         rew = rew.detach().cpu().numpy()
         terminated = terminated.detach().cpu().numpy()
         truncated = truncated.detach().cpu().numpy()
-        dones = dones.detach().cpu().numpy()
+
         # Convert extra information to list of dicts
-        infos = self._process_extras(obs, terminated, truncated, extras, reset_ids)
+        #infos = self._process_extras(obs, extras, reset_ids)
+        infos = extras
 
         # Reset info for terminated environments
         self._ep_rew_buf[reset_ids] = 0
         self._ep_len_buf[reset_ids] = 0
 
-        return obs, rew, dones, infos
+        return obs, rew, terminated, truncated, infos
 
     def close(self):  # noqa: D102
         self.env.close()
@@ -223,40 +197,70 @@ class GymIsaacWrapper(VectorEnv):
         return obs
 
     def _process_extras(
-        self, obs: np.ndarray, terminated: np.ndarray, truncated: np.ndarray, extras: dict, reset_ids: np.ndarray
-    ) -> list[dict[str, Any]]:
+        self, obs: np.ndarray, extras: dict, reset_ids: np.ndarray
+    ) -> dict[str, list[Any]]:
+        print(extras)
         """Convert miscellaneous information into dictionary for each sub-environment."""
-        # Create empty list of dictionaries to fill
-        infos: list[dict[str, Any]] = [dict.fromkeys(extras.keys()) for _ in range(self.num_envs)]
+        # Initialize the dictionary with empty lists for each key
+        infos: dict[str, list[Any]] = {key: [] for key in extras.keys()}
+        infos["episode"] = []
+        infos["terminal_observation"] = []
+        
         # Fill-in information for each sub-environment
         for idx in range(self.num_envs):
-            # Fill-in episode monitoring info
+            episode_info = None
             if idx in reset_ids:
-                infos[idx]["episode"] = dict()
-                infos[idx]["episode"]["r"] = float(self._ep_rew_buf[idx])
-                infos[idx]["episode"]["l"] = float(self._ep_len_buf[idx])
-            else:
-                infos[idx]["episode"] = None
-            # Fill-in bootstrap information
-            infos[idx]["TimeLimit.truncated"] = truncated[idx] and not terminated[idx]
-            # Fill-in information from extras
+                episode_info = {
+                    "r": float(self._ep_rew_buf[idx]),
+                    "l": float(self._ep_len_buf[idx])
+                }
+            infos["episode"].append(episode_info)
+            
+            # Add information from extras
             for key, value in extras.items():
-                if key == "log":
-                    if infos[idx]["episode"] is not None:
-                        for sub_key, sub_value in value.items():
-                            infos[idx]["episode"][sub_key] = sub_value
+                if key == "log" and episode_info is not None:
+                    for sub_key, sub_value in value.items():
+                        episode_info[sub_key] = sub_value
                 else:
-                    infos[idx][key] = value[idx]
+                    infos[key].append(value[idx])
+                    
             # Add information about terminal observation separately
+            terminal_obs = None
             if idx in reset_ids:
                 if isinstance(obs, dict):
-                    terminal_obs = dict.fromkeys(obs.keys())
-                    for key, value in obs.items():
-                        terminal_obs[key] = value[idx]
+                    terminal_obs = {key: value[idx] for key, value in obs.items()}
                 else:
                     terminal_obs = obs[idx]
-                infos[idx]["terminal_observation"] = terminal_obs
-            else:
-                infos[idx]["terminal_observation"] = None
+            infos["terminal_observation"].append(terminal_obs)
+        
         return infos
 
+
+    def __str__(self):
+        """Returns the wrapper name and the :attr:`env` representation string."""
+        return f"<{type(self).__name__}{self.env}>"
+
+    def __repr__(self):
+        """Returns the string representation of the wrapper."""
+        return str(self)
+
+    @classmethod
+    def class_name(cls) -> str:
+        """Returns the class name of the wrapper."""
+        return cls.__name__
+
+    @property
+    def unwrapped(self) -> ManagerBasedRLEnv:
+        """Returns the base environment of the wrapper.
+
+        This will be the bare :class:`gymnasium.Env` environment, underneath all layers of wrappers.
+        """
+        return self.env.unwrapped
+
+    def get_episode_rewards(self) -> list[float]:
+        """Returns the rewards of all the episodes."""
+        return self._ep_rew_buf.cpu().tolist()
+
+    def get_episode_lengths(self) -> list[int]:
+        """Returns the number of time-steps of all the episodes."""
+        return self._ep_len_buf.cpu().tolist()
