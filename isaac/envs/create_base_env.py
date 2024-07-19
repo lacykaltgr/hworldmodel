@@ -27,11 +27,15 @@ from omni.isaac.lab.app import AppLauncher
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Tutorial on creating a quadruped base environment.")
 parser.add_argument("--num_envs", type=int, default=64, help="Number of environments to spawn.")
+parser.add_argument("--cameras", default=False, help="Enable cameras.")
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
 args_cli = parser.parse_args()
+
+if args_cli.cameras:
+    args_cli.enable_cameras = True
 
 # launch omniverse app
 app_launcher = AppLauncher(args_cli)
@@ -44,6 +48,7 @@ simulation_app.update()
 """Rest everything follows."""
 
 import torch
+import math
 
 import omni.isaac.lab.envs.mdp as mdp
 import omni.isaac.lab.sim as sim_utils
@@ -66,6 +71,8 @@ from isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
 ##
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 from isaac.assets.turtlebot import TURTLEBOT4_CFG
+from omni.isaac.lab.sensors import CameraCfg
+from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg 
 
 
 ##
@@ -105,10 +112,22 @@ class MySceneCfg(InteractiveSceneCfg):
     # add robot
     robot: ArticulationCfg = TURTLEBOT4_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
+    camera = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/base_link/Camera",
+        update_period=1/30,
+        height=240,
+        width=320,
+        data_types=["rgb", "distance_to_image_plane"],
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=4.81, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.3, 100)
+        ),
+        offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(1.0, -0.25, 0.0, -1), convention="ros"),
+    )
+
     # lights
     light = AssetBaseCfg(
         prim_path="/World/light",
-        spawn=sim_utils.DistantLightCfg(color=(0.75, 0.75, 0.75), intensity=3000.0),
+        spawn=sim_utils.DistantLightCfg(color=(0.75, 0.75, 0.75), intensity=6000.0),
     )
 
 
@@ -163,7 +182,7 @@ class TurtlebotEnvCfg(ManagerBasedEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Scene settings
-    scene: MySceneCfg = MySceneCfg(num_envs=args_cli.num_envs, env_spacing=0.5)
+    scene: MySceneCfg = MySceneCfg(num_envs=args_cli.num_envs, env_spacing=1)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
