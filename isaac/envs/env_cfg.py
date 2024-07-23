@@ -1,59 +1,11 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
-# All rights reserved.
-#
-# SPDX-License-Identifier: BSD-3-Claus
-
-"""
-This script demonstrates the environment for a quadruped robot with height-scan sensor.
-
-In this example, we use a locomotion policy to control the robot. The robot is commanded to
-move forward at a constant velocity. The height-scan sensor is used to detect the height of
-the terrain.
-
-.. code-block:: bash
-
-    # Run the script
-    ./isaaclab.sh -p source/standalone/tutorials/04_envs/quadruped_base_env.py --num_envs 32
-
-"""
-
-"""Launch Isaac Sim Simulator first."""
-
-
-import argparse
-
-from omni.isaac.lab.app import AppLauncher
-
-# add argparse arguments
-parser = argparse.ArgumentParser(description="Tutorial on creating a quadruped base environment.")
-parser.add_argument("--num_envs", type=int, default=64, help="Number of environments to spawn.")
-parser.add_argument("--cameras", default=False, help="Enable cameras.")
-
-# append AppLauncher cli args
-AppLauncher.add_app_launcher_args(parser)
-# parse the arguments
-args_cli = parser.parse_args()
-
-if args_cli.cameras:
-    args_cli.enable_cameras = True
-
-# launch omniverse app
-app_launcher = AppLauncher(args_cli)
-simulation_app = app_launcher.app
-
-from omni.isaac.core.utils.extensions import enable_extension
-enable_extension("omni.isaac.wheeled_robots")
-simulation_app.update()
-
-"""Rest everything follows."""
-
 import torch
 import math
+import gymnasium as gym
 
 import omni.isaac.lab.envs.mdp as mdp
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg
-from omni.isaac.lab.envs import ManagerBasedEnv, ManagerBasedEnvCfg
+from omni.isaac.lab.envs import ManagerBasedRLEnv, ManagerBasedRLEnvCfg
 from omni.isaac.lab.managers import EventTermCfg as EventTerm
 from omni.isaac.lab.managers import ObservationGroupCfg as ObsGroup
 from omni.isaac.lab.managers import ObservationTermCfg as ObsTerm
@@ -64,6 +16,8 @@ from omni.isaac.lab.terrains import TerrainImporterCfg
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR, check_file_path, read_file
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
+from omni.isaac.lab.managers import RewardTermCfg as RewTerm
+from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
 
 ##
@@ -71,8 +25,10 @@ from isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
 ##
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 from isaac.assets.turtlebot import TURTLEBOT4_CFG
+from isaac.assets.camera_observationterm import camera_rgb
 from omni.isaac.lab.sensors import CameraCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg 
+from omni.isaac.lab.envs import ManagerBasedRLEnv
 
 
 ##
@@ -100,14 +56,14 @@ class MySceneCfg(InteractiveSceneCfg):
         debug_vis=False,
     )
     """
-    terrain = AssetBaseCfg(prim_path="/World/defaultGroundPlane", spawn=sim_utils.GroundPlaneCfg())
+    #terrain = AssetBaseCfg(prim_path="/World/defaultGroundPlane", spawn=sim_utils.GroundPlaneCfg())
 
-    #room = AssetBaseCfg(
-    #    prim_path="/World/room", 
-    #    spawn=sim_utils.UsdFileCfg(
-    #        usd_path=f"http://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/4.0/Isaac/Environments/Simple_Room/simple_room.usd",
-    #    )    
-    #)
+    room = AssetBaseCfg(
+        prim_path="/World/room", 
+        spawn=sim_utils.UsdFileCfg(
+            usd_path=f"http://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/4.0/Isaac/Environments/Simple_Room/simple_room.usd",
+        )    
+    )
 
     # add robot
     robot: ArticulationCfg = TURTLEBOT4_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
@@ -121,7 +77,7 @@ class MySceneCfg(InteractiveSceneCfg):
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=4.81, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.3, 100)
         ),
-        offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(1.0, -0.25, 0.0, -1), convention="ros"),
+        offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.5), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
     )
 
     # lights
@@ -143,6 +99,11 @@ class ActionsCfg:
     control = WheeledRobotActionTermCfg(
         asset_name="robot",
         joint_names=[".*_wheel_joint*"],
+        wheel_radius = 0.072,
+        wheel_base = 0.3,
+        max_linear_speed = 0.31,
+        max_angular_speed = 1.90,
+        max_wheel_speed = 0.31 / 0.072
     )
 
 
@@ -154,12 +115,13 @@ class ObservationsCfg:
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
 
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+        #joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        #joint_vel = ObsTerm(func=mdp.joint_vel_rel)
+        camera_rgb = ObsTerm(func=camera_rgb)
 
         def __post_init__(self):
             self.enable_corruption = True
-            self.concatenate_terms = True
+            #self.concatenate_terms = True
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
@@ -172,21 +134,53 @@ class EventCfg:
     reset_scene = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
 
 
+@configclass
+class RewardsCfg:
+    pass
+
+@configclass
+class TerminationsCfg:
+    """Termination terms for the MDP."""
+    pass
+
+
+@configclass
+class CurriculumCfg:
+    """Configuration for the curriculum."""
+
+    pass
+
+
+@configclass
+class CommandsCfg:
+    """Command terms for the MDP."""
+
+    # no commands for this MDP
+    null = mdp.NullCommandCfg()
+
+
 ##
 # Environment configuration
 ##
 
 
 @configclass
-class TurtlebotEnvCfg(ManagerBasedEnvCfg):
+class TurtlebotEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Scene settings
-    scene: MySceneCfg = MySceneCfg(num_envs=args_cli.num_envs, env_spacing=1)
+    scene: MySceneCfg = MySceneCfg(num_envs=1, env_spacing=1)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     events: EventCfg = EventCfg()
+
+    # MDP settings
+    curriculum: CurriculumCfg = CurriculumCfg()
+    rewards: RewardsCfg = RewardsCfg()
+    terminations: TerminationsCfg = TerminationsCfg()
+    # No command generator
+    commands: CommandsCfg = CommandsCfg()
 
     def __post_init__(self):
         """Post initialization."""
@@ -195,42 +189,3 @@ class TurtlebotEnvCfg(ManagerBasedEnvCfg):
         # simulation settings
         #self.sim.dt = 0.005  # simulation timestep -> 200 Hz physics
         #self.sim.physics_material = self.scene.terrain.physics_material
-
-def main():
-    """Main function."""
-    # setup base environment
-    env_cfg = TurtlebotEnvCfg()
-    env = ManagerBasedEnv(cfg=env_cfg)
-
-    print(f"[INFO]: Environment observation space: {env_cfg.observations}")
-    print(f"[INFO]: Environment action space: {env_cfg.actions}")
-
-    # simulate physics
-    count = 0
-    obs, _ = env.reset()
-    while simulation_app.is_running():
-        with torch.inference_mode():
-            # reset
-            if count % 1000 == 0:
-                obs, _ = env.reset()
-                count = 0
-                print("-" * 80)
-                print("[INFO]: Resetting environment...")
-            # infer action
-            action = torch.tensor([10, 0])
-            # take action n_envs times
-            action = action.repeat(env.num_envs, 1)
-            # step env
-            obs, _ = env.step(action)
-            # update counter
-            count += 1
-
-    # close the environment
-    env.close()
-
-
-if __name__ == "__main__":
-    # run the main function
-    main()
-    # close sim app
-    simulation_app.close()

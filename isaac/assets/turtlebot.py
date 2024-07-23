@@ -11,24 +11,32 @@ from omni.isaac.lab.sim.schemas import JointDrivePropertiesCfg
 
 TURTLEBOT4_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"/IsaacSim-ros_workspaces/humble_ws/src/turtlebot4/turtlebot4_description/urdf/standard/turtlebot4/turtlebot4.usd",
+        usd_path=f"/hworldmodel/isaac/turtlebot4/turtlebot4/turtlebot4.usd",
         joint_drive_props=JointDrivePropertiesCfg(
             drive_type="acceleration",
         )
     ),
-    #init_state=ArticulationCfg.InitialStateCfg(
-    #    pos=(0.0, 0.0, 0.0),
-    #    joint_pos={".*": 0.0},
-    #    joint_vel={".*": 0.0},
-    #),
+    init_state=ArticulationCfg.InitialStateCfg(
+        pos=(-2.0, 2.0, 0.0),
+        joint_pos={".*": 0.0},
+        joint_vel={".*": 0.0},
+    ),
     actuators={
-        "wheels": IdealPDActuatorCfg(
-            joint_names_expr=[".*_wheel_joint*"],
+        "left_wheel": IdealPDActuatorCfg(
+            joint_names_expr=["left_wheel_joint*"],
             stiffness=0.0,
-            damping=500,
+            damping=5000,
             effort_limit=8.0,
             velocity_limit=8.0,
-            friction=15.0,
+            friction=10.0,
+        ),
+        "right_wheel": IdealPDActuatorCfg(
+            joint_names_expr=["right_wheel_joint*"],
+            stiffness=0.0,
+            damping=5000,
+            effort_limit=8.0,
+            velocity_limit=8.0,
+            friction=10.0,
         ),
     },
 )
