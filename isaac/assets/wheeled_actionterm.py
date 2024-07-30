@@ -69,6 +69,8 @@ class WheeledRobotActionTerm(ActionTerm):
             max_wheel_speed=self._max_wheel_speed,
         )
 
+        self.scale = cfg.scale
+
 
     """
     Properties.
@@ -95,7 +97,7 @@ class WheeledRobotActionTerm(ActionTerm):
         # store the raw actions
         self._raw_actions[:] = actions
         # no-processing of actions
-        self._processed_actions[:] = self._raw_actions[:]
+        self._processed_actions[:] = self.scale * self._raw_actions[:]  # times scale
 
     def apply_actions(self):
         actions = self._processed_actions
@@ -120,3 +122,4 @@ class WheeledRobotActionTermCfg(ActionTermCfg):
     max_linear_speed: float | torch.Tensor = 0.22
     max_angular_speed: float | torch.Tensor = 0.22
     max_wheel_speed: float | torch.Tensor = 8.0
+    scale: float | torch.Tensor = 1.0

@@ -36,4 +36,9 @@ def camera_depth(env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntityCf
     asset: Camera = env.scene[asset_cfg.name]
     camera_data = asset.data
     output = camera_data.output
-    return output.get("distance_to_image_plane")
+    depth_image = output.get("distance_to_image_plane").unsqueeze(-3)
+    # replace infinite values with the maximum depth
+    inf_mask = torch.isinf(depth_image)
+    max_value = torch.max(depth_image[~inf_mask])
+    depth_image[inf_mask] = max_value
+    return depth_image

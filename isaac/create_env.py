@@ -61,10 +61,10 @@ def main():
     #env = ManagerBasedEnv(env_cfg)
 
     env_cfg = parse_env_cfg(
-        "Turtlebot-Empty-v0", use_gpu=True, num_envs=args_cli.num_envs, use_fabric=True
+        "Turtlebot-AccCollision-v0", use_gpu=True, num_envs=args_cli.num_envs, use_fabric=True
     )
     # create environment
-    env = gym.make("Turtlebot-Empty-v0", cfg=env_cfg, render_mode="rgb_array")
+    env = gym.make("Turtlebot-AccCollision-v0", cfg=env_cfg, render_mode="rgb_array")
 
     if args_cli.video:
         video_kwargs = {
@@ -96,6 +96,7 @@ def main():
             action = action.repeat(env.num_envs, 1)
             # step env
             obs, rew, terminated, truncated, info = env.step(action)
+
             # update counter
             count += 1
 

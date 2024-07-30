@@ -216,6 +216,10 @@ def main(cfg: "DictConfig"):  # noqa: F821
                         eval_metrics = {f"eval/simulated_reward": eval_reward}
                         if logger is not None:
                             log_metrics(logger, eval_metrics, collected_frames)
+                        
+            elif (i % eval_iter) == 0:
+                pass
+
 
             profiler.step()
             t_collect_init = time.time()

@@ -1,4 +1,7 @@
-from hworldmodel.utils import _make_env, transform_env, get_activation
+try:
+    from utils import _make_env, transform_env, get_activation
+except ImportError:
+    from hworldmodel.utils import _make_env, transform_env, get_activation
 
 from . import (
     #DreamerV1,

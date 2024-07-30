@@ -3,7 +3,7 @@ from .env_cfg import TurtlebotEnvCfg
 
 
 gym.register(
-    id="Turtlebot-Empty-v0",
+    id="Turtlebot-AccCollision-v0",
     entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={

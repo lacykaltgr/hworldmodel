@@ -14,29 +14,22 @@ TURTLEBOT4_CFG = ArticulationCfg(
         usd_path=f"/hworldmodel/isaac/turtlebot4/turtlebot4/turtlebot4.usd",
         joint_drive_props=JointDrivePropertiesCfg(
             drive_type="acceleration",
-        )
+        ),
+        activate_contact_sensors=True
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(-2.0, 2.0, 0.0),
+        pos=(0.0, 0.0, 0.0),
         joint_pos={".*": 0.0},
         joint_vel={".*": 0.0},
     ),
     actuators={
-        "left_wheel": IdealPDActuatorCfg(
-            joint_names_expr=["left_wheel_joint*"],
+        "wheels": IdealPDActuatorCfg(
+            joint_names_expr=[".*_wheel_joint"],
             stiffness=0.0,
             damping=5000,
             effort_limit=8.0,
             velocity_limit=8.0,
-            friction=10.0,
-        ),
-        "right_wheel": IdealPDActuatorCfg(
-            joint_names_expr=["right_wheel_joint*"],
-            stiffness=0.0,
-            damping=5000,
-            effort_limit=8.0,
-            velocity_limit=8.0,
-            friction=10.0,
+            friction=15.0,
         ),
     },
 )

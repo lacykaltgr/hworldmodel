@@ -28,7 +28,7 @@ from .modules import (
     RSSMPriorV2, 
     RSSMPosteriorV2,
     ObsEncoder,
-    ObsDecoder,
+    DepthDecoder,
     DreamerActorV2,
     RSSMRollout,
 )
@@ -67,10 +67,12 @@ class DreamerV2:
         rssm_dim = config.networks.rssm_hidden_dim
         
         return nn.ModuleDict(modules = dict(
-                encoder = (ObsEncoder() if config.env.from_pixels 
-                    else MLP(out_features=1024, depth=2, num_cells=hidden_dim, activation_class=activation)), 
-                decoder = (ObsDecoder() if config.env.from_pixels
-                    else MLP(out_features=proof_env.observation_spec["observation"].shape[-1], depth=2, num_cells=hidden_dim, activation_class=activation)),
+                encoder = ObsEncoder(),
+                decoder = DepthDecoder(),
+                #encoder = (ObsEncoder() if config.env.from_pixels 
+                #    else MLP(out_features=1024, depth=2, num_cells=hidden_dim, activation_class=activation)), 
+                #decoder = (ObsDecoder() if config.env.from_pixels
+                #    else MLP(out_features=proof_env.observation_spec["observation"].shape[-1], depth=2, num_cells=hidden_dim, activation_class=activation)),
                 rssm_prior = RSSMPriorV2(hidden_dim=rssm_dim, rnn_hidden_dim=rssm_dim, state_vars=state_vars, state_classes=state_classes, action_spec=action_spec),
                 rssm_posterior = RSSMPosteriorV2(hidden_dim=rssm_dim, state_vars=state_vars, state_classes=state_classes),
                 reward_model = MLP(out_features=1, depth=2, num_cells=hidden_dim, activation_class=activation),
@@ -97,7 +99,7 @@ class DreamerV2:
             tensordict = (proof_env.rollout(5, auto_cast_to_device=True).unsqueeze(-1).to(world_model.device))
             tensordict = tensordict.to_tensordict()
             if len(tensordict.shape) == 3:
-                # for isaac_lab envs where paralellization is handled by the env
+                #for isaac_lab envs where paralellization is handled by the env
                 tensordict = tensordict[0]
             world_model(tensordict)
             

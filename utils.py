@@ -138,10 +138,33 @@ def is_isaac_env(cfg):
 def make_isaac_environments(cfg):
     #func = functools.partial(_make_env, cfg=cfg, device=cfg.env.device)
     train_env = _make_env(cfg=cfg, device=cfg.env.device)
-    train_env = transform_env(cfg, train_env)
+    train_env = transform_isaac_env(cfg, train_env)
     train_env.set_seed(cfg.env.seed)
     check_env_specs(train_env)
     return train_env
+
+
+def transform_isaac_env(cfg, env):
+    if not isinstance(env, TransformedEnv):
+        env = TransformedEnv(env)
+    if cfg.env.from_pixels:
+        env.append_transform(
+            RenameTransform(in_keys=["observation"], out_keys=["pixels_int"])
+        )
+        # transforms pixel from 0-255 to 0-1 (uint8 to float32)
+        env.append_transform(
+            ToTensorImage(in_keys=["pixels_int"], out_keys=["pixels"], shape_tolerant=True)
+        )
+        if cfg.env.grayscale:
+            env.append_transform(GrayScale())
+
+        image_size = cfg.env.image_size
+        env.append_transform(Resize(image_size, image_size))
+
+    env.append_transform(DoubleToFloat())
+    env.append_transform(RewardSum())
+
+    return env
 
 def dump_video(module):
     if isinstance(module, VideoRecorder):
@@ -189,19 +212,19 @@ def make_replay_buffer(
                 assert "pixels" not in data.keys()
                 return data
 
-            transforms = Compose(
-                ExcludeTransform("pixels", ("next", "pixels"), inverse=True),
-                check_no_pixels,  # will be called only during forward
-                ToTensorImage(
-                    in_keys=["pixels_int", ("next", "pixels_int")],
-                    out_keys=["pixels", ("next", "pixels")],
-                ),
-            )
-            if grayscale:
-                transforms.append(GrayScale(in_keys=["pixels", ("next", "pixels")]))
-            transforms.append(
-                Resize(image_size, image_size, in_keys=["pixels", ("next", "pixels")])
-            )
+            #transforms = Compose(
+                #ExcludeTransform("pixels", ("next", "pixels"), inverse=True),
+                #check_no_pixels,  # will be called only during forward
+                #ToTensorImage(
+                #    in_keys=["pixels_int", ("next", "pixels_int")],
+                #    out_keys=["pixels", ("next", "pixels")],
+                #),
+            #)
+            #if grayscale:
+            #    transforms.append(GrayScale(in_keys=["pixels", ("next", "pixels")]))
+            #transforms.append(
+            #    Resize(image_size, image_size, in_keys=["pixels", ("next", "pixels")])
+            #)
         transforms.append(DeviceCastTransform(device=device))
 
         replay_buffer = TensorDictReplayBuffer(
@@ -248,7 +271,7 @@ def get_activation(name):
 def _default_device(device=None):
     if device in ("", None):
         if torch.cuda.is_available():
-            return torch.device("cuda:0")
+            return torch.device("cuda:1")
         return torch.device("cpu")
     return torch.device(device)
 

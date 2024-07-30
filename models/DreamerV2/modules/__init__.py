@@ -1,8 +1,11 @@
 # modules correctly implemented in original code
 
 from torchrl.modules import (
-    ObsEncoder,
-    ObsDecoder
+    ObsEncoder
+)
+
+from .depth_decoder import (
+    DepthDecoder
 )
 
 # modules with minor changes
