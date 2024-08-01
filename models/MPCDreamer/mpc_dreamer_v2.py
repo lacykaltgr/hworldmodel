@@ -23,7 +23,9 @@ from .modules import (
     ObsEncoder,
     ObsDecoder,
     RSSMRollout,
-    gradMPCPlanner
+    gradMPCPlanner,
+    PolicyPrior,
+    QFunction
 )
 
 from torchrl.objectives.value import TD0Estimator, TD1Estimator, TDLambdaEstimator
@@ -56,50 +58,28 @@ class MPCDreamerV2:
         state_classes = config.networks.state_dim
         rssm_dim = config.networks.rssm_hidden_dim
         
-        networks = nn.ModuleDict(modules = dict(
+        return nn.ModuleDict(modules = dict(
                 encoder = (ObsEncoder() if config.env.from_pixels 
                     else MLP(out_features=1024, depth=2, num_cells=hidden_dim, activation_class=activation)), 
                 decoder = (ObsDecoder() if config.env.from_pixels
                     else MLP(out_features=proof_env.observation_spec["observation"].shape[-1], depth=2, num_cells=hidden_dim, activation_class=activation)),
                 rssm_prior = RSSMPriorV2(hidden_dim=rssm_dim, rnn_hidden_dim=rssm_dim, state_vars=state_vars, state_classes=state_classes, action_spec=action_spec),
-                rssm_posterior = RSSMPosteriorV2(hidden_dim=rssm_dim, state_vars=state_vars, state_classes=state_classes),  
+                rssm_posterior = RSSMPosteriorV2(hidden_dim=rssm_dim, state_vars=state_vars, state_classes=state_classes),
+                reward_model = MLP(out_features=1, depth=2, num_cells=hidden_dim, activation_class=activation),
+                actor_model = PolicyPrior(out_features=action_spec.shape[-1], depth=2, num_cells=hidden_dim, activation_class=activation, std_min_val=0.1),
+                
+                # TODO: add q-function specific values to config
+                q_function = QFunction(latent_dim=rssm_dim, action_dim=action_spec.shape[-1], mlp_dim=hidden_dim, ),
             )
         )
-        
-        if config.networks.value_estimator == "reward":
-            networks.update(dict(reward_model = MLP(out_features=1, depth=2, num_cells=hidden_dim, activation_class=activation),))
-        elif config.networks.value_estimator == "value":
-            networks.update(dict(value_model = MLP(out_features=1, depth=2, num_cells=hidden_dim, activation_class=activation)))
-        elif config.networks.value_estimator == "both":
-            networks.update(dict(
-                reward_model = MLP(out_features=1, depth=2, num_cells=hidden_dim, activation_class=activation),
-                value_model = MLP(out_features=1, depth=2, num_cells=hidden_dim, activation_class=activation
-            )))
-        else:
-            raise ValueError(f"Unknown value estimator description {config.networks.value_estimator}")
-        
-        return networks
     
 
     def _init_modules(self, config, proof_env, device):
         
         world_model = self._make_world_model().to(device)
         model_based_env = self._make_mbenv(proof_env, config.networks.state_dim, config.networks.rssm_hidden_dim).to(device)
-        value_model, value_estimator = self._make_value_model(config.networks.use_value_network).to(device)
-        
-        
-        planner = gradMPCPlanner(
-            env=model_based_env,
-            advantage_module=value_estimator,
-            temperature=config.planner.temperature,
-            planning_horizon=config.planner.planning_horizon,
-            optim_steps=config.planner.optim_steps,
-            num_candidates=config.planner.n_candidates,
-            top_k=config.planner.top_k,
-            reward_key= ("next", "reward"),
-            action_key= "action",
-        ).to(device)
-        policy = self._dreamer_make_actor_real(proof_env, planner)
+        value_model = self._make_value_model(config.networks.use_value_network).to(device)
+        policy = self._make_actor_real(config, mb_env=model_based_env).to(device)
         
         # Initialize world model
         with torch.no_grad(), set_exploration_type(ExplorationType.RANDOM):
@@ -113,70 +93,65 @@ class MPCDreamerV2:
             tensordict = model_based_env.fake_tensordict().unsqueeze(-1).to(value_model.device)
             value_model(tensordict)
         
-        modules = nn.ModuleDict(modules=dict(
+        return nn.ModuleDict(modules=dict(
             world_model = world_model,
             model_based_env = model_based_env,
             value_model = value_model,
             rl_policy = policy,
-            planner = planner,
         ))
         
-
-
-    def _make_value_model(self, use_value_network: bool = False):
-        # if no separeta value network is used, 
-        # the reward model is used as value model
         
-        if use_value_network:
-            value_model = SafeModule(
-                self.networks["value_model"],
-                in_keys=["state", "belief"],
-                out_keys=[self.keys["value_key"]]
-            )
-            value_estimator = self.make_value_estimator(value_net=value_model)
-        else:
-            value_model = SafeModule(
-                self.networks["reward_model"],
-                in_keys=["state", "belief"],
-                out_keys=[self.keys["value_key"]]
-            )
-            
-            # this would use the reward as both reward and value
-            # value_estimator = self.make_value_estimator(value_net=value_model)
-            
-            value_estimator = 
-        return value_model, value_estimator
-
-
-
-    def _make_actor_real(self, proof_environment, planner):
-        # actor for real world: interacts with states ~ posterior
-        # Out actor differs from the original paper where first they compute prior and posterior and then act on it
-        # but we found that this approach worked better.
-        actor_realworld = SafeSequential(
+        
+    def _make_world_model(self, config):
+        
+        encoder = SafeModule(
+            self.networks["encoder"],
+            in_keys=[("next", self.keys["observation_in_key"])],
+            out_keys=[("next", "encoded_latents")],
+        )
+        
+        rssm_rollout = RSSMRollout(
             SafeModule(
-                self.networks["encoder"],
-                in_keys=[self.keys["observation_in_key"]],
-                out_keys=["encoded_latents"],
+                self.networks["rssm_prior"],
+                in_keys=["state", "belief", "action"],
+                out_keys=[("next", "prior_logits"), "_", ("next", "belief")],
             ),
             SafeModule(
                 self.networks["rssm_posterior"],
-                in_keys=["belief", "encoded_latents"],
-                out_keys=[ "_", "state",],
-            ),
-            planner,
-            SafeModule(
-                self.networks["rssm_prior"],
-                in_keys=["state", "belief", self.keys["action_key"]],
-                out_keys=["_", "_", ("next", "belief")], # we don't need the prior state
+                in_keys=[("next", "belief"), ("next", "encoded_latents")],
+                out_keys=[("next", "posterior_logits"), ("next", "state")],
             ),
         )
-        return actor_realworld
+        
+        decoder = SafeModule(
+            self.networks["decoder"],
+            in_keys=[("next", "state"), ("next", "belief")],
+            out_keys=[("next", self.keys["observation_out_key"])],
+        )
+        
+        reward_model = SafeModule(
+            self.networks["reward_model"],
+            in_keys=[("next", "state"), ("next", "belief")],
+            out_keys=[("next", "reward")],
+        )
+
+        transition_model = SafeSequential(
+            encoder,
+            rssm_rollout,
+            decoder
+        )
+    
+        world_model = WorldModelWrapper(
+            transition_model,
+            reward_model
+        )
+        
+        return world_model
     
 
 
     
-    def _dreamer_make_mbenv(self, test_env, state_dim: int = 30, rssm_hidden_dim: int = 200):
+    def _make_mbenv(self, test_env, state_dim: int = 30, rssm_hidden_dim: int = 200):
         
 
         mb_env_obs_decoder = SafeModule(
@@ -212,97 +187,65 @@ class MPCDreamerV2:
         model_based_env.set_specs_from_env(test_env)
         
         return model_based_env
-
-
-    def _dreamer_make_world_model(self, config):
+    
+    
+    
+    
+    def _make_value_model(self, use_value_network: bool = False):
+        # if no separeta value network is used, 
+        # the reward model is used as value model
         
-        rssm_rollout = RSSMRollout(
+        value_model = SafeModule(
+            self.networks["q_function"],
+            in_keys=["action", "state", "belief"],
+            out_keys=[self.keys["value_key"]]
+        )
+            
+        return value_model
+
+
+
+    def _make_actor_real(self, config, mb_env):
+        # actor for real world: interacts with states ~ posterior
+        # Out actor differs from the original paper where first they compute prior and posterior and then act on it
+        # but we found that this approach worked better.
+        
+        value_estimator = TD0Estimator(
+            gamma=config.planner.gamma,
+            value_network=self.modules["value_model"],
+            differentiable=True,
+            value_key=self.keys["value_key"],
+        )
+        
+        planner = gradMPCPlanner(
+            env=mb_env,
+            actor_module=self.networks["actor_model"],
+            value_estimator=value_estimator,
+            temperature=config.planner.temperature,
+            planning_horizon=config.planner.planning_horizon,
+            optim_steps=config.planner.optim_steps,
+            num_candidates=config.planner.n_candidates,
+            reward_key= ("next", "reward"),
+            action_key= "action",
+        )
+        
+        
+        actor_realworld = SafeSequential(
             SafeModule(
-                self.networks["rssm_prior"],
-                in_keys=["state", "belief", "action"],
-                out_keys=[("next", "prior_logits"), "_", ("next", "belief")],
+                self.networks["encoder"],
+                in_keys=[self.keys["observation_in_key"]],
+                out_keys=["encoded_latents"],
             ),
             SafeModule(
                 self.networks["rssm_posterior"],
-                in_keys=[("next", "belief"), ("next", "encoded_latents")],
-                out_keys=[("next", "posterior_logits"), ("next", "state")],
+                in_keys=["belief", "encoded_latents"],
+                out_keys=[ "_", "state",],
             ),
-        )
-        
-        decoder = SafeModule(
-            self.networks["decoder"],
-            in_keys=[("next", "state"), ("next", "belief")],
-            out_keys=[("next", self.keys["observation_out_key"])],
-        )
-
-        transition_model = SafeSequential(
+            planner,
             SafeModule(
-                self.networks["encoder"],
-                in_keys=[("next", self.keys["observation_in_key"])],
-                out_keys=[("next", "encoded_latents")],
+                self.networks["rssm_prior"],
+                in_keys=["state", "belief", self.keys["action_key"]],
+                out_keys=["_", "_", ("next", "belief")], # we don't need the prior state
             ),
-            rssm_rollout,
-            decoder,
         )
-        
-        if config.networks.value_estimator == "reward" or config.networks.value_estimator == "both":
-            reward_model = SafeModule(
-                self.networks["reward_model"],
-                in_keys=[("next", "state"), ("next", "belief")],
-                out_keys=[("next", "reward")],
-            )
-        elif config.networks.value_estimator == "value":
-            reward_model = SafeModule(
-                self.networks["value_model"],
-                in_keys=[("next", "state"), ("next", "belief")],
-                out_keys=[("next", "value")],
-            )
-        
-        world_model = WorldModelWrapper(
-            transition_model,
-            reward_model,
-        )
-        
-        return world_model
-    
-
-    def make_value_estimator(self, value_net, **hyperparams):
-        value_type = ValueEstimators.TDLambda
-        hp = dict(default_value_kwargs(value_type))
-        if hasattr(self, "gamma"):
-            hp["gamma"] = self.gamma
-        hp.update(hyperparams)
-        if value_type is ValueEstimators.TD1:
-            _value_estimator = TD1Estimator(
-                **hp,
-                value_network=value_net,
-            )
-        elif value_type is ValueEstimators.TD0:
-            _value_estimator = TD0Estimator(
-                **hp,
-                value_network=value_net,
-            )
-        elif value_type is ValueEstimators.GAE:
-            if hasattr(self, "lmbda"):
-                hp["lmbda"] = self.lmbda
-            raise NotImplementedError(
-                f"Value type {value_type} it not implemented for loss {type(self)}."
-            )
-        elif value_type is ValueEstimators.TDLambda:
-            if hasattr(self, "lmbda"):
-                hp["lmbda"] = self.lmbda
-            _value_estimator = TDLambdaEstimator(
-                **hp,
-                value_network=value_net,
-                vectorized=True,  # TODO: vectorized version seems not to be similar to the non vectorised
-            )
-        else:
-            raise NotImplementedError(f"Unknown value type {value_type}")
-
-        tensor_keys = {
-            "value": self.keys["value_key"],
-            "value_target": "value_target",
-        }
-        _value_estimator.set_keys(**tensor_keys)
-        return _value_estimator
-
+        return actor_realworld

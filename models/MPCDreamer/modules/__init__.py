@@ -13,4 +13,6 @@ from .rssm import (
     RSSMRollout,
 )
 
-from gradMPC import gradMPCPlanner
+from .actor import PolicyPrior
+from .gradMPC import gradMPCPlanner
+from .q_function import QFunction

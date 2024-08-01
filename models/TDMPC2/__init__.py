@@ -3,11 +3,10 @@ from torch import nn
 from torchrl._utils import logger as torchrl_logger
 from torchrl.envs import DreamerDecoder
 from torchrl.record import VideoRecorder
-from torchrl.objectives.utils import SoftUpdate
 
 from torchrl.modules.models.model_based import RSSMRollout
-from .objectives import ModelLoss, ActorLoss, ValueLoss
-from .mpc_dreamer_v2 import MPCDreamerV2
+from .objectives import DreamerModelLoss, MPPIValueLoss
+from .tdmpc2 import MPPIDreamerV2
 
 def make_model(
     cfg,
@@ -15,15 +14,24 @@ def make_model(
     logger,
 ):
     # Model
-    model = MPCDreamerV2(cfg, device)
+    model = MPPIDreamerV2(cfg, device)
+    
+    optim = torch.optim.Adam([
+        {'params': self.model._encoder.parameters(), 'lr': self.cfg.lr*self.cfg.enc_lr_scale},
+        {'params': self.model._dynamics.parameters()},
+        {'params': self.model._reward.parameters()},
+        {'params': self.model._Qs.parameters()},
+        {'params': self.model._task_emb.parameters() if self.cfg.multitask else []}
+    ], lr=self.cfg.lr)
+    pi_optim = torch.optim.Adam(self.model._pi.parameters(), lr=self.cfg.lr, eps=1e-5)
 
     # Losses
-    world_model_loss = ModelLoss(
+    world_model_loss = DreamerModelLoss(
         model.modules["world_model"]
     ).with_optimizer(
         opt_module=model.modules["world_model"],
         optimizer_cls=torch.optim.AdamW,
-        optimizer_kwargs={"lr": cfg.optimization.world_model_lr, "weight_decay": 10e-6, "eps": 10e-5},
+        optimizer_kwargs={"lr": cfg.optimization.world_model_lr, "weight_decay": 10e-4, "eps": 10e-5},
         use_grad_scaler=cfg.optimization.use_autocast
     )
     
@@ -31,31 +39,21 @@ def make_model(
     #if cfg.env.backend == "gym":
     #    world_model_loss.set_keys(pixels="observation", reco_pixels="reco_observation")
 
-    actor_loss = ActorLoss(
-        model.modules["actor_simulator"],
-        model.modules["value_target"],
-        model.modules["model_based_env"],
+    actor_loss = MPPIValueLoss(
+        planner=model.modules["planner"],
+        value_model=model.modules["value_model"],
+        model_based_env=model.modules["model_based_env"],
         imagination_horizon=cfg.optimization.imagination_horizon,
-    ).with_optimizer(
-        opt_module=model.modules["actor_simulator"],
-        optimizer_cls=torch.optim.AdamW,
-        optimizer_kwargs={"lr": cfg.optimization.actor_lr, "weight_decay": 10e-6, "eps": 10e-5},
-        use_grad_scaler=cfg.optimization.use_autocast
-    )
-
-    actor_loss.loss_module.make_value_estimator(
-        gamma=cfg.optimization.gamma, lmbda=cfg.optimization.lmbda
-    )
-    
-    value_loss = ValueLoss(
-        model.modules["value_model"], 
-        discount_loss=True, 
-        gamma=cfg.optimization.gamma
+        discount_loss = True, 
     ).with_optimizer(
         opt_module=model.modules["value_model"],
         optimizer_cls=torch.optim.AdamW,
-        optimizer_kwargs={"lr": cfg.optimization.value_lr, "weight_decay": 10e-6, "eps": 10e-5},
+        optimizer_kwargs={"lr": cfg.optimization.value_lr, "weight_decay": 10e-4, "eps": 10e-5},
         use_grad_scaler=cfg.optimization.use_autocast
+    )
+    
+    actor_loss.loss_module.make_value_estimator(
+        gamma=cfg.optimization.gamma, lmbda=cfg.optimization.lmbda
     )
     
     if cfg.optimization.compile:
@@ -82,10 +80,9 @@ def make_model(
         {
             "world_model": world_model_loss,
             "actor": actor_loss,
-            "value": value_loss,
         }
     )
-    policy = model.modules["actor_realworld"]
+    policy = model.modules["policy"]
     mb_env = model.modules["model_based_env"]
     
     if cfg.logger.video:
@@ -107,13 +104,7 @@ def make_model(
         )
     else:
         model_based_env_eval = None
-        
-    value_target_updater = SoftUpdate(
-        value_loss, 
-        eps=cfg.optimization.soft_update_eps,
-        tau=cfg.optimization.soft_update_tau
-    )
-    def update():
-        value_target_updater.step()
-        
-    return losses, policy, model_based_env_eval, update
+    
+    return losses, policy, model_based_env_eval, lambda step: None
+    
+    

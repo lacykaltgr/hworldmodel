@@ -31,7 +31,7 @@ from torchrl.envs.utils import step_mdp
 
 
 @loss
-class DreamerModelLoss(LossModule):
+class ModelLoss(LossModule):
 
     @dataclass
     class _AcceptedKeys:
@@ -158,40 +158,164 @@ class DreamerModelLoss(LossModule):
         return dist
     
     
-    
-
+  
 @loss
-class MPCValueLoss(LossModule):
+class ActorLoss(LossModule):
+    """Dreamer Actor Loss.
+
+    Computes the loss of the dreamer actor. The actor loss is computed as the
+    negative average lambda return.
+
+    Reference: https://arxiv.org/abs/1912.01603.
+
+    Args:
+        actor_model (TensorDictModule): the actor model.
+        value_model (TensorDictModule): the value model.
+        model_based_env (DreamerEnv): the model based environment.
+        imagination_horizon (int, optional): The number of steps to unroll the
+            model. Defaults to ``15``.
+        discount_loss (bool, optional): if ``True``, the loss is discounted with a
+            gamma discount factor. Default to ``False``.
+
+    """
+
     @dataclass
     class _AcceptedKeys:
+        """Maintains default values for all configurable tensordict keys.
+
+        This class defines which tensordict keys can be set using '.set_keys(key_name=key_value)' and their
+        default values.
+
+        Attributes:
+            belief (NestedKey): The input tensordict key where the belief is expected.
+                Defaults to ``"belief"``.
+            reward (NestedKey): The reward is expected to be in the tensordict key ("next", reward).
+                Defaults to ``"reward"``.
+            value (NestedKey): The reward is expected to be in the tensordict key ("next", value).
+                Will be used for the underlying value estimator. Defaults to ``"state_value"``.
+            done (NestedKey): The input tensordict key where the flag if a
+                trajectory is done is expected ("next", done). Defaults to ``"done"``.
+            terminated (NestedKey): The input tensordict key where the flag if a
+                trajectory is terminated is expected ("next", terminated). Defaults to ``"terminated"``.
+        """
+
         belief: NestedKey = "belief"
         reward: NestedKey = "reward"
         value: NestedKey = "state_value"
         done: NestedKey = "done"
         terminated: NestedKey = "terminated"
-        
+
     default_keys = _AcceptedKeys()
-    default_value_estimator = ValueEstimators.TDLambda
 
     def __init__(
         self,
-        planner: TensorDictModule,
+        actor_model: TensorDictModule,
         value_model: TensorDictModule,
         model_based_env: DreamerEnv,
         *,
         imagination_horizon: int = 15,
-        discount_loss: bool = False,  # for consistency with paper
-        value_loss: Optional[str] = None,
+        gamma: int = 0.99,
+        policy_ent_scale: float = 1e-4
     ):
         super().__init__()
-        self.planner = planner
-        self.__dict__["value_model"] = value_model
+        self.actor_model = actor_model
+        self.value_model = value_model
         self.model_based_env = model_based_env
         self.imagination_horizon = imagination_horizon
-        self.discount_loss = discount_loss
+        self.policy_ent_scale = policy_ent_scale
+        self.gamma = gamma
+
+    def _forward_value_estimator_keys(self, **kwargs) -> None:
+        pass
+
+    def forward(self, tensordict: TensorDict) -> Tuple[TensorDict, TensorDict]:
+        tensordict = tensordict.select("state", self.tensor_keys.belief).detach()
+        tensordict = tensordict.reshape(-1)
+        
+        with hold_out_net(self.model_based_env):
+            tensordict = self.model_based_env.reset(tensordict)
+            fake_data = self.model_based_env.rollout(
+                max_steps=self.imagination_horizon,
+                policy=self.actor_model,
+                auto_reset=False,
+                tensordict=tensordict,
+            )
+
+        # add "value"
+        self.value_model(fake_data)     # Q(z_t, a_t) ...
+        
+        # TODO: could use td value estimator here too
+        td_target = fake_data.get("value")
+
+        entropy = self.actor_model.get_dist(fake_data).entropy.sum(-1).unsqueeze(-1)
+        entropy_loss = self.policy_ent_scale * entropy
+        
+        gamma = self.gamma.to(tensordict.device)
+        discount = gamma.expand(td_target.shape).clone()
+        discount[..., 0, :] = 1
+        discount = discount.cumprod(dim=-2)
+        actor_loss = -((td_target + entropy_loss) * discount).sum((-1, -2)).mean()
+        
+        loss_tensordict = TensorDict({"loss_actor": actor_loss}, [])
+        return loss_tensordict, fake_data
+
+        
+        
+@loss
+class ValueLoss(LossModule):
+    """Dreamer Value Loss.
+
+    Computes the loss of the dreamer value model. The value loss is computed
+    between the predicted value and the lambda target.
+
+    Reference: https://arxiv.org/abs/1912.01603.
+
+    Args:
+        value_model (TensorDictModule): the value model.
+        value_loss (str, optional): the loss to use for the value loss.
+            Default: ``"l2"``.
+        discount_loss (bool, optional): if ``True``, the loss is discounted with a
+            gamma discount factor. Default: False.
+        gamma (float, optional): the gamma discount factor. Default: ``0.99``.
+
+    """
+
+    @dataclass
+    class _AcceptedKeys:
+        """Maintains default values for all configurable tensordict keys.
+
+        This class defines which tensordict keys can be set using '.set_keys(key_name=key_value)' and their
+        default values
+
+        Attributes:
+            value (NestedKey): The input tensordict key where the state value is expected.
+                Defaults to ``"state_value"``.
+        """
+
+        value: NestedKey = "state_value"
+
+    default_keys = _AcceptedKeys()
+    default_value_estimator = ValueEstimators.TD0
+
+    def __init__(
+        self,
+        value_model: TensorDictModule,
+        value_loss: Optional[str] = None,
+        discount_loss: bool = True,  # for consistency with paper
+        gamma: int = 0.99,
+    ):
+        super().__init__()
+        self.value_model = value_model
+        
+        self.convert_to_functional(
+            self.value_model,
+            "value",
+            create_target_params=True
+        )
+        
         self.value_loss = value_loss if value_loss is not None else "l2"
-        self.gamma = 0.99
-        self.lmbda = 0.95
+        self.gamma = gamma
+        self.discount_loss = discount_loss
 
     def _forward_value_estimator_keys(self, **kwargs) -> None:
         if self._value_estimator is not None:
@@ -199,114 +323,50 @@ class MPCValueLoss(LossModule):
                 value=self._tensor_keys.value,
             )
 
-    def forward(self, tensordict: TensorDict) -> Tuple[TensorDict, TensorDict]:
-        tensordict = tensordict.select("state", self.tensor_keys.belief).detach()[:1]
-        tensordict = tensordict.reshape(-1)
+    def forward(self, fake_data) -> torch.Tensor:
         
-        with hold_out_net(self.model_based_env), hold_out_net(self.value_model):
-            tensordict = self.model_based_env.reset(tensordict)
-            fake_data = self.model_based_env.rollout(
-                max_steps=self.imagination_horizon,
-                policy=self.planner,
-                auto_reset=False,
-                tensordict=tensordict,
-            )
-            next_tensordict = step_mdp(fake_data, keep_other=True)
-            next_tensordict = self.value_model(next_tensordict)
-            
-        reward = fake_data.get(("next", self.tensor_keys.reward))
-        next_value = next_tensordict.get(self.tensor_keys.value)
-        lambda_target = self.lambda_target(reward, next_value).detach()
-            
-        tensordict_select = fake_data.select(*self.value_model.in_keys, strict=False).detach()
-        tensordict_select = self.value_model(tensordict_select)
+        # add "value"
+        self.value_model(fake_data)
+        value = fake_data.get(self.tensor_keys.value)
+        
+        # add "value_target"
+        # # r_t + gamma * V(z_{t+1}, a_{t+1})
+        td_target = self.value_estimator.value_estimate(fake_data, target_params=self.target_value_params)  
+        
 
-        if self.discount_loss:
-            discount = self.gamma * torch.ones_like(
-                lambda_target, device=lambda_target.device
+        value_loss = 0.5 * (
+            distance_loss(
+                value,
+                td_target,
+                self.value_loss,
             )
-            discount[..., 0, :] = 1
-            discount = discount.cumprod(dim=-2)
-            
-            value_loss = (
-                0.5 * (
-                    discount
-                    * distance_loss(
-                        tensordict_select.get(self.tensor_keys.value),
-                        lambda_target,
-                        self.value_loss,
-                    )
-                )
-                .sum((-1, -2))
-                .mean()
-            )
-        else:
-            value_loss = 0.5 * (
-                distance_loss(
-                    tensordict_select.get(self.tensor_keys.value),
-                    lambda_target,
-                    self.value_loss,
-                )
-                .sum((-1, -2))
-                .mean()
-            )
+            .sum((-1, -2))
+            .mean()
+        )
         
         loss_tensordict = TensorDict({"loss_value": value_loss}, [])
         return loss_tensordict, fake_data
-
-
-    def lambda_target(self, reward: torch.Tensor, value: torch.Tensor) -> torch.Tensor:
-        done = torch.zeros(reward.shape, dtype=torch.bool, device=reward.device)
-        terminated = torch.zeros(reward.shape, dtype=torch.bool, device=reward.device)
-        input_tensordict = TensorDict(
-            {
-                ("next", self.tensor_keys.reward): reward,
-                ("next", self.tensor_keys.value): value,
-                ("next", self.tensor_keys.done): done,
-                ("next", self.tensor_keys.terminated): terminated,
-            },
-            [],
-        )
-        return self.value_estimator.value_estimate(input_tensordict)
-
-    def make_value_estimator(self, value_type: ValueEstimators = None, **hyperparams):
-        if value_type is None:
-            value_type = self.default_value_estimator
-        self.value_type = value_type
-        value_net = None
+    
+    
+    def make_value_estimator(self, value_type: ValueEstimators, **hyperparams):
         hp = dict(default_value_kwargs(value_type))
         if hasattr(self, "gamma"):
             hp["gamma"] = self.gamma
         hp.update(hyperparams)
-        if value_type is ValueEstimators.TD1:
-            self._value_estimator = TD1Estimator(
-                **hp,
-                value_network=value_net,
-            )
-        elif value_type is ValueEstimators.TD0:
-            self._value_estimator = TD0Estimator(
-                **hp,
-                value_network=value_net,
-            )
-        elif value_type is ValueEstimators.GAE:
-            if hasattr(self, "lmbda"):
-                hp["lmbda"] = self.lmbda
+        
+        if value_type == ValueEstimators.TD1:
+            self._value_estimator = TD1Estimator(value_network=self.value_model, **hp)
+        elif value_type == ValueEstimators.TD0:
+            self._value_estimator = TD0Estimator(value_network=self.value_model, **hp)
+        elif value_type == ValueEstimators.GAE:
             raise NotImplementedError(
                 f"Value type {value_type} it not implemented for loss {type(self)}."
             )
-        elif value_type is ValueEstimators.TDLambda:
-            if hasattr(self, "lmbda"):
-                hp["lmbda"] = self.lmbda
-            self._value_estimator = TDLambdaEstimator(
-                **hp,
-                value_network=value_net,
-                vectorized=True,  # TODO: vectorized version seems not to be similar to the non vectorised
-            )
+        elif value_type == ValueEstimators.TDLambda:
+            self._value_estimator = TDLambdaEstimator(value_network=self.value_model, **hp)
         else:
             raise NotImplementedError(f"Unknown value type {value_type}")
-
-        tensor_keys = {
+        self._value_estimator.set_keys({
             "value": self.tensor_keys.value,
             "value_target": "value_target",
-        }
-        self._value_estimator.set_keys(**tensor_keys)
+        })

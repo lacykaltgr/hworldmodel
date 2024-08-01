@@ -4,12 +4,9 @@ import torch
 from torch import nn
 import numpy as np
 
-from .utils import (
-    roll,
-    batch_std,
-)
 
 class Constraint(nn.Module):
+    
     @abstractmethod
     def forward(self, x):
         pass
