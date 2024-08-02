@@ -4,10 +4,6 @@ import torch
 from torch import nn
 import numpy as np
 
-from .utils import (
-    roll,
-    batch_std,
-)
 
 class Transform(ABC):
     @abstractmethod
@@ -33,6 +29,8 @@ class JitterTransform(nn.Module):
         self.oy = 0
 
     def forward(self, x):
+
+        from .utils import roll
         
         # TODO: jittering for non-image data
         
@@ -43,6 +41,8 @@ class JitterTransform(nn.Module):
         return x
     
     def undo(self, x):
+        from .utils import roll
+
         x.data = roll(roll(x.data, -self.ox, -1), -self.oy, -2)
         return x
     
@@ -55,6 +55,8 @@ class NormalizeTransform(nn.Module):
         self.eps = eps
 
     def forward(self, x):
+        from .utils import batch_std
+
         data_idx = batch_std(x.data) + self.eps > self.norm / self.scale
         x.data[data_idx] = (x.data / (batch_std(x.data, keepdim=True) + self.eps) * self.norm / self.scale)[
             data_idx]
@@ -71,6 +73,8 @@ class BackpropNormTransform(nn.Module):
         self.eps = eps
         
     def forward(self, x):
+        from .utils import batch_std
+
         x_ = x  # img = inputs
         if self.train_norm and self.train_norm > 0.0:
             img_idx = batch_std(x.data) + self.eps > self.train_norm / self.scale  # images to update

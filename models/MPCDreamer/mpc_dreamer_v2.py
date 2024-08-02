@@ -15,6 +15,7 @@ from torchrl.modules import (
 )
 from torchrl.modules.tensordict_module.world_models import WorldModelWrapper
 from common.distributions import TruncNormalDist
+from common import init
 
 from utils import _make_env, transform_env, get_activation
 from .modules import (
@@ -47,6 +48,11 @@ class MPCDreamerV2:
         
         self.networks = self._init_networks(config, test_env)
         self.modules = self._init_modules(config, test_env, device)
+
+        self.networks.apply(init.weight_init)
+        
+        # TODO: init zero 
+        #init.zero_([self.networks["q_function"]._Qs.params[-2]])
         
         
     def _init_networks(self, config, proof_env):
@@ -69,17 +75,17 @@ class MPCDreamerV2:
                 actor_model = PolicyPrior(out_features=action_spec.shape[-1], depth=2, num_cells=hidden_dim, activation_class=activation, std_min_val=0.1),
                 
                 # TODO: add q-function specific values to config
-                q_function = QFunction(latent_dim=rssm_dim, action_dim=action_spec.shape[-1], mlp_dim=hidden_dim, ),
+                q_function = QFunction(latent_dim=rssm_dim, action_dim=action_spec.shape[-1], mlp_dim=hidden_dim, num_q=5, tau=0.01, num_bins=101, v_min=-10, v_max=10, dropout=0.01),
             )
         )
     
 
     def _init_modules(self, config, proof_env, device):
         
-        world_model = self._make_world_model().to(device)
+        world_model = self._make_world_model(config).to(device)
         model_based_env = self._make_mbenv(proof_env, config.networks.state_dim, config.networks.rssm_hidden_dim).to(device)
-        value_model = self._make_value_model(config.networks.use_value_network).to(device)
-        policy = self._make_actor_real(config, mb_env=model_based_env).to(device)
+        value_model = self._make_value_model().to(device)
+        policy = self._make_actor_real(config, value_module=value_model, mb_env=model_based_env).to(device)
         
         # Initialize world model
         with torch.no_grad(), set_exploration_type(ExplorationType.RANDOM):
@@ -191,7 +197,7 @@ class MPCDreamerV2:
     
     
     
-    def _make_value_model(self, use_value_network: bool = False):
+    def _make_value_model(self):
         # if no separeta value network is used, 
         # the reward model is used as value model
         
@@ -205,28 +211,30 @@ class MPCDreamerV2:
 
 
 
-    def _make_actor_real(self, config, mb_env):
+    def _make_actor_real(self, config, value_module, mb_env):
         # actor for real world: interacts with states ~ posterior
         # Out actor differs from the original paper where first they compute prior and posterior and then act on it
         # but we found that this approach worked better.
         
         value_estimator = TD0Estimator(
-            gamma=config.planner.gamma,
-            value_network=self.modules["value_model"],
+            gamma=config.optimization.gamma,
+            value_network=value_module,
             differentiable=True,
-            value_key=self.keys["value_key"],
         )
+        value_estimator.set_keys(value=self.keys["value_key"])
         
         planner = gradMPCPlanner(
             env=mb_env,
+            planning_horizon=config.planner.planning_horizon,
+
             actor_module=self.networks["actor_model"],
             value_estimator=value_estimator,
-            temperature=config.planner.temperature,
-            planning_horizon=config.planner.planning_horizon,
-            optim_steps=config.planner.optim_steps,
             num_candidates=config.planner.n_candidates,
+            
             reward_key= ("next", "reward"),
             action_key= "action",
+
+            mpc_config=config.planner,
         )
         
         

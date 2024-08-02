@@ -42,7 +42,6 @@ from torchrl.envs import (
 )
 from torchrl.envs.utils import check_env_specs
 from torchrl.record import VideoRecorder
-from isaac.wrapper import IsaacEnv
 
 
 def _make_env(cfg, device, from_pixels=False):
@@ -61,11 +60,6 @@ def _make_env(cfg, device, from_pixels=False):
             cfg.env.task,
             from_pixels=cfg.env.from_pixels or from_pixels,
             pixels_only=cfg.env.from_pixels,
-        )
-    elif lib == "isaac_lab":
-        env = IsaacEnv(
-            cfg.env.name,
-            num_envs=cfg.env.n_parallel_envs,
         )
     else:
         raise NotImplementedError(f"Unknown lib {lib}.")

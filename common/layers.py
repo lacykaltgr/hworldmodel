@@ -12,7 +12,7 @@ class Ensemble(nn.Module):
 
 	def __init__(self, modules, **kwargs):
 		super().__init__()
-		modules = nn.ModuleList(modules)
+		self.modules = nn.ModuleList(modules)
 		params, buffers = stack_module_state(modules)
   
 		base_model = copy.deepcopy(modules[0])

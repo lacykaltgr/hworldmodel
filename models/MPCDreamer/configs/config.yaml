@@ -9,9 +9,9 @@ env:
   image_size : 64
   horizon: 500
   n_parallel_envs: 5
-  device: cpu
- #   _target_: utils._default_device
- #   device: null
+  device:
+    _target_: hworldmodel.utils._default_device
+    device: null
 
 collector:
   total_frames: 5_000_000
@@ -19,7 +19,7 @@ collector:
   init_random_frames: 1000
   frames_per_batch: 250
   device:
-    _target_: utils._default_device
+    _target_: hworldmodel.utils._default_device
     device: null
 
 optimization:
@@ -38,9 +38,8 @@ optimization:
   use_autocast: True
 
 networks:
-  value_estimator: reward # one of (reward[R=r_i, V=sum(r_i)], value[V=TD(V, r_u)], both) 
   device:
-    _target_: utils._default_device
+    _target_: hworldmodel.utils._default_device
     device: null
   state_dim: 32
   state_vars: 32
@@ -54,6 +53,25 @@ planner:
   n_candidates: 8
   top_k: 4
   optim_steps: 6
+  mpc:
+    log_interval: 10
+    optimizer_class: Adam
+    optimizer_kwargs:
+      lr: 0.01
+      eps: 1e-5
+    scheduler: null
+    scheduler_kwargs: null
+    iter_n: 10
+    precond: False
+    grad_clip: 100
+    grad_norm: 100
+    bias: 0.0
+    scale: 1.0
+    constraints:
+    transforms:
+    pre_opt_transforms:
+    post_opt_transforms:
+
 
   
 replay_buffer: 
@@ -63,9 +81,9 @@ replay_buffer:
   scratch_dir: null
 
 logger:
-  model_name: MPPIDreamer
+  model_name: MPCDreamer
   backend: wandb
-  project: mppi-dreamer
+  project: mpc-dreamer
   exp_name: ${env.name}-${env.task}-${env.seed}
   mode: online
   # eval interval, in collection counts

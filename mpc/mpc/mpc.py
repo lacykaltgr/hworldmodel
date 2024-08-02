@@ -16,6 +16,7 @@ class MPC(nn.Module):
     Class for generating more complex optimized inputs
     """
     def __init__(self, config, operation, shape=(1, 28, 28),  device='cpu'):
+        super().__init__()
         self.device = device
         self.shape = shape
         self.operation = operation
@@ -33,27 +34,31 @@ class MPC(nn.Module):
         self.scale = config.mpc.scale           # scale for the image
         
         constraints = nn.Sequential()
-        for constraint in config.mpc.constraints:
-            constraint_cls = get_constraint(constraint.name)
-            constraints.append(constraint_cls(**constraint.kwargs))
+        if config.mpc.constraints is not None:
+            for constraint in config.mpc.constraints:
+                constraint_cls = get_constraint(constraint.name)
+                constraints.append(constraint_cls(**constraint.kwargs))
         self.constraints = constraints
         
         transforms = nn.Sequential()
-        for transform in config.mpc.transforms:
-            transform_cls = get_transform(transform.name)
-            transforms.append(transform_cls(**transform.kwargs))
+        if config.mpc.transforms is not None:
+            for transform in config.mpc.transforms:
+                transform_cls = get_transform(transform.name)
+                transforms.append(transform_cls(**transform.kwargs))
         self.transforms = transforms
         
         pre_opt_transforms = nn.Sequential()
-        for transform in config.mpc.pre_opt_transforms:
-            transform_cls = get_transform(transform.name)
-            pre_opt_transforms.append(transform_cls(**transform.kwargs))
+        if config.mpc.pre_opt_transforms is not None:
+            for transform in config.mpc.pre_opt_transforms:
+                transform_cls = get_transform(transform.name)
+                pre_opt_transforms.append(transform_cls(**transform.kwargs))
         self.pre_opt_transforms = pre_opt_transforms
         
         post_opt_transforms = nn.Sequential()
-        for transform in config.mpc.post_opt_transforms:
-            transform_cls = get_transform(transform.name)
-            post_opt_transforms.append(transform_cls(**transform.kwargs))
+        if config.mpc.post_opt_transforms is not None:
+            for transform in config.mpc.post_opt_transforms:
+                transform_cls = get_transform(transform.name)
+                post_opt_transforms.append(transform_cls(**transform.kwargs))
         self.post_opt_transforms = post_opt_transforms
         
 

@@ -2,7 +2,7 @@ from copy import deepcopy
 import numpy as np
 import torch
 from torch import nn
-from torch.nn import init
+from common import init
 from common import layers
 from common import math
 
@@ -26,17 +26,9 @@ class QFunction(nn.Module):
 				for _ in range(num_q)
 			]
 		)
-		print("QFunction parameters before applying init.weight_init")
-		for param in self.parameters():
-			print(param)
-		print("QFunction params before applying zero init")
-		for param in self._Qs.params:
-			print(param)
     
-		self.apply(init.weight_init)
-		init.zero_([self._Qs.params[-2]])
+		# TODO: these should be applied to the whole model
 
-		self.q_target = self.QTarget(self._Qs)
 		self.convert_to_two_hot = lambda x: math.two_hot_inv(x, num_bins, v_min, v_max)
 		self.return_type = "all"
 		
@@ -49,14 +41,6 @@ class QFunction(nn.Module):
 		"""
 		for p in self._Qs.parameters():
 			p.requires_grad_(mode)
-
-	def soft_update_target_Q(self):
-		"""
-		Soft-update target Q-networks using Polyak averaging.
-		"""
-		with torch.no_grad():
-			for p, p_target in zip(self._Qs.parameters(), self.q_target._target_Qs.parameters()):
-				p_target.data.lerp_(p.data, self.tau)
     
 
 	def return_with(self, return_type):

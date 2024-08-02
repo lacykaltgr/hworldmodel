@@ -10,15 +10,13 @@ import torch
 import torch.cuda
 import tqdm
 import models
-from .utils import (
+from hworldmodel.utils import (
     dump_video,
     log_metrics,
     make_collector,
     make_environments,
     make_replay_buffer,
-    get_profiler,
-    is_isaac_env,
-    make_isaac_environments
+    get_profiler
 )
 from hydra.utils import instantiate
 
@@ -30,7 +28,7 @@ import os
 os.environ['BATCHED_PIPE_TIMEOUT'] = str(999999)
 
 
-@hydra.main(version_base="1.1", config_path="models/DreamerV2/configs", config_name="isaac_config")
+@hydra.main(version_base="1.1", config_path="models/MPCDreamer/configs", config_name="config")
 def main(cfg: "DictConfig"):  # noqa: F821
     # cfg = correct_for_frame_skip(cfg)
 
@@ -47,17 +45,11 @@ def main(cfg: "DictConfig"):  # noqa: F821
             wandb_kwargs={"mode": cfg.logger.mode},  # "config": cfg},
         )
 
-    is_isaaclab_env = is_isaac_env(cfg)
-    if not is_isaaclab_env:
-        train_env, test_env = make_environments(
-            cfg=cfg,
-            parallel_envs=cfg.env.n_parallel_envs,
-            logger=logger,
-        )
-    else:
-        train_env = make_isaac_environments(
-            cfg=cfg
-        )
+    train_env, test_env = make_environments(
+        cfg=cfg,
+        parallel_envs=cfg.env.n_parallel_envs,
+        logger=logger,
+    )
 
     
     model_module = getattr(models, cfg.logger.model_name)
@@ -182,7 +174,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
             
             
             # Evaluation
-            if not is_isaac_env and (i % eval_iter) == 0:
+            if (i % eval_iter) == 0:
                     # Real env
                 with set_exploration_type(ExplorationType.MODE), torch.no_grad():
                     eval_rollout = test_env.rollout(

@@ -1,8 +1,8 @@
 import torch
 import numpy as np
 from torch import optim
-from optimizer import MEIoptimizer, MEIBatchoptimizer
 
+from .optimizer import MEIoptimizer, MEIBatchoptimizer
 from . import transforms
 from . import constraints
 
