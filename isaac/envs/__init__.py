@@ -1,5 +1,6 @@
 import gymnasium as gym
 from .env_cfg import TurtlebotEnvCfg
+from.navigation import NavigationEnvCfg
 
 
 gym.register(
@@ -8,5 +9,14 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": TurtlebotEnvCfg,
+    },
+)
+
+gym.register(
+    id="Turtlebot-Navigation-v0",
+    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": NavigationEnvCfg,
     },
 )
