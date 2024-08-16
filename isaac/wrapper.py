@@ -92,7 +92,7 @@ class GymIsaacWrapper(VectorEnv):
         self.render_mode = self.unwrapped.render_mode
 
         # Obtain gym spaces
-        observation_space = self.unwrapped.single_observation_space["policy"]
+        observation_space = self.unwrapped.single_observation_space
         action_space = self.unwrapped.single_action_space
         if isinstance(action_space, gym.spaces.Box) and not action_space.is_bounded("both"):
             action_space = gym.spaces.Box(low=-100, high=100, shape=action_space.shape)
@@ -195,7 +195,7 @@ class GymIsaacWrapper(VectorEnv):
     
         return obs
     
-    def __process_obs_group(self, obs_dict) :
+    def __process_obs_group(self, obs) :
         if isinstance(obs, dict):
             for key, value in obs.items():
                 obs[key] = self.__process_obs_group(value)

@@ -30,7 +30,7 @@ import os
 os.environ['BATCHED_PIPE_TIMEOUT'] = str(999999)
 
 
-@hydra.main(version_base="1.1", config_path="models/DreamerV2/configs", config_name="isaac_config")
+@hydra.main(version_base="1.1", config_path="models/IsaacNavigation/configs", config_name="isaac_config")
 def main(cfg: "DictConfig"):  # noqa: F821
     # cfg = correct_for_frame_skip(cfg)
 

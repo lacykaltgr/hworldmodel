@@ -6,6 +6,7 @@ except ImportError:
 from . import (
     #DreamerV1,
     DreamerV2,
+    IsaacNavigation
     #MPPIDreamer,
     #DreamerV2_liquid,
     #DreamerV2value

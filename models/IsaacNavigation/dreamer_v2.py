@@ -5,8 +5,6 @@
 import torch
 import torch.nn as nn
 from tensordict.nn import InteractionType
-
-from torchrl.envs import DreamerEnv
 from torchrl.envs.utils import ExplorationType, set_exploration_type, check_env_specs
 from torchrl.modules import (
     MLP,
@@ -31,6 +29,7 @@ from .modules import (
     DepthDecoder,
     DreamerActorV2,
     RSSMRollout,
+    DreamerEnv
 )
 from .modules.actor import DreamerActorV2
 import copy
@@ -195,7 +194,7 @@ class DreamerV2:
             
             SafeModule(
                 self.networks["joint_encoder"],
-                in_keys=["joint"],
+                in_keys=["encoded_depth", "encoded_velocity", "encoded_command"],
                 out_keys=["encoded_latents"],
             ),  
             
@@ -248,7 +247,7 @@ class DreamerV2:
         # MB environment
         if use_decoder_in_env:
             mb_env_obs_decoder = SafeModule(
-                self.networks["decoder"],
+                self.networks["depth_decoder"],
                 in_keys=["state", "belief"],
                 out_keys=[self.keys["observation_out_key"]],
             )
@@ -304,23 +303,23 @@ class DreamerV2:
         encoder = SafeSequential(                       
             SafeModule(
                 self.networks["depth_encoder"],
-                in_keys=["depth"],
-                out_keys=["encoded_depth"],
+                in_keys=[("next", "depth")],
+                out_keys=[("next", "encoded_depth")],
             ),
             SafeModule(
                 self.networks["velocity_encoder"],
-                in_keys=["velocity"],
-                out_keys=["encoded_velocity"],
+                in_keys=[("next", "velocity")],
+                out_keys=[("next", "encoded_velocity")],
             ),
             SafeModule(
                 self.networks["command_encoder"],
-                in_keys=["command"],
-                out_keys=["encoded_command"],
+                in_keys=[("next", "command")],
+                out_keys=[("next", "encoded_command")],
             ),
             SafeModule(
                 self.networks["joint_encoder"],
-                in_keys=["joint"],
-                out_keys=["encoded_latents"],
+                in_keys=[("next", "encoded_depth"), ("next", "encoded_velocity"), ("next", "encoded_command")],
+                out_keys=[("next", "encoded_latents")],
             ),
         )
         

@@ -93,17 +93,17 @@ def make_model(
         model_based_env_eval = mb_env.append_transform(DreamerDecoder())
 
         def float_to_int(data):
-            reco_pixels_float = data.get("reco_observations")
+            reco_pixels_float = data.get("reco_depth")
             reco_pixels = (reco_pixels_float * 255).floor()
             # assert (reco_pixels < 256).all() and (reco_pixels > 0).all(), (reco_pixels.min(), reco_pixels.max())
             reco_pixels = reco_pixels.to(torch.uint8)
-            data.set("reco_observations_float", reco_pixels_float)
-            return data.set("reco_observations", reco_pixels)
+            data.set("reco_depth_float", reco_pixels_float)
+            return data.set("reco_depth", reco_pixels)
 
         model_based_env_eval.append_transform(float_to_int)
         model_based_env_eval.append_transform(
             VideoRecorder(
-                logger=logger, tag="eval/simulated_rendering", in_keys=["reco_observations"]
+                logger=logger, tag="eval/simulated_rendering", in_keys=["reco_depth"]
             )
         )
     else:

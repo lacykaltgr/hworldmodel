@@ -17,4 +17,5 @@ from .rssm import (
     RSSMRollout,
 )
 
+from .mb_env import DreamerEnv
 from .actor import DreamerActorV2
