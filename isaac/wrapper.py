@@ -185,11 +185,20 @@ class GymIsaacWrapper(VectorEnv):
     def _process_obs(self, obs_dict: torch.Tensor | dict[str, torch.Tensor]) -> np.ndarray | dict[str, np.ndarray]:
         """Convert observations into NumPy data type."""
         # Gymnasium doesn't support asymmetric observation spaces, so we only use "policy"
-        obs = obs_dict["policy"]
+        if "policy" in obs_dict:
+            obs = obs_dict["policy"]
+        else:
+            obs = obs_dict
+        
         # ManagerBasedRLEnv uses torch backend by default.
+        obs = self.__process_obs_group(obs)
+    
+        return obs
+    
+    def __process_obs_group(self, obs_dict) :
         if isinstance(obs, dict):
             for key, value in obs.items():
-                obs[key] = value.detach().cpu().numpy()
+                obs[key] = self.__process_obs_group(value)
         elif isinstance(obs, torch.Tensor):
             obs = obs.detach().cpu().numpy()
         else:
