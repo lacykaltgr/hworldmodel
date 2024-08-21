@@ -39,6 +39,8 @@ from torchrl.envs import (
     TensorDictPrimer,
     ToTensorImage,
     TransformedEnv,
+    ObservationNorm,
+    ClipTransform
 )
 from torchrl.envs.utils import check_env_specs
 from torchrl.record import VideoRecorder
@@ -144,7 +146,7 @@ def make_isaac_environments(cfg):
     return train_env
 
 
-def transform_isaac_env(cfg, env):
+def transform_isaac_env(cfg, env, logger=None):
     if not isinstance(env, TransformedEnv):
         env = TransformedEnv(env)
     if cfg.env.from_pixels:
@@ -160,10 +162,20 @@ def transform_isaac_env(cfg, env):
 
         image_size = cfg.env.image_size
         env.append_transform(Resize(image_size, image_size))
+    else:
+
+        env.append_transform(
+            Resize(cfg.env.image_size, cfg.env.image_size, in_keys=["depth"], out_keys=["depth"])
+        )
+        env.append_transform(
+            ObservationNorm(loc=0, scale=10, in_keys=["depth"], out_keys=["depth"], standard_normal=True)
+        )
+        env.append_transform(
+            ClipTransform(low=0, high=1, in_keys=["depth"], out_keys=["depth"])
+        )
 
     env.append_transform(DoubleToFloat())
     env.append_transform(RewardSum())
-
     return env
 
 def dump_video(module):

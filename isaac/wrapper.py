@@ -17,15 +17,19 @@ class IsaacEnv(GymWrapper):
 
     def __init__(
         self, 
-        env_name, 
+        env_name=None, 
+        env=None,
         num_envs=1, 
         use_fabric=True,
         seed=420,
         **kwargs
     ):
-            
-        env_cfg = parse_env_cfg(env_name, use_gpu=True, num_envs=num_envs, use_fabric=use_fabric)
-        env = gym.make(env_name, cfg=env_cfg)
+        assert env_name is not None or env is not None, "Either env_name or env must be provided."
+        assert env_name is None or env is None, "Only one of env_name or env must be provided."
+
+        if env is None:
+            env_cfg = parse_env_cfg(env_name, use_gpu=True, num_envs=num_envs, use_fabric=use_fabric)
+            env = gym.make(env_name, cfg=env_cfg)
 
         env = GymIsaacWrapper(env)
         env.seed(seed=seed)
@@ -208,7 +212,6 @@ class GymIsaacWrapper(VectorEnv):
     def _process_extras(
         self, obs: np.ndarray, extras: dict, reset_ids: np.ndarray
     ) -> dict[str, list[Any]]:
-        print(extras)
         """Convert miscellaneous information into dictionary for each sub-environment."""
         # Initialize the dictionary with empty lists for each key
         infos: dict[str, list[Any]] = {key: [] for key in extras.keys()}

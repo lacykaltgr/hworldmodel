@@ -58,6 +58,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
         train_env = make_isaac_environments(
             cfg=cfg
         )
+        test_env = train_env
     
     model_module = getattr(models, cfg.logger.model_name)
     losses, policy, mb_env, callback = model_module.make_model(
@@ -182,7 +183,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
             
             
             # Evaluation
-            if not is_isaac_env and (i % eval_iter) == 0:
+            if (i % eval_iter) == 0:
                     # Real env
                 with set_exploration_type(ExplorationType.MODE), torch.no_grad():
                     eval_rollout = test_env.rollout(

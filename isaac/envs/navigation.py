@@ -59,7 +59,7 @@ class NavigationSceneCfg(InteractiveSceneCfg):
         width=320,
         data_types=["distance_to_image_plane"],
         spawn=PinholeCameraCfg(
-            focal_length=7, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.3, 100)
+            focal_length=7, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.01, 10)
         ),
         offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.5), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
     )
@@ -96,6 +96,7 @@ class EventCfg:
             },
         },
     )
+
 
 
 @configclass
@@ -204,7 +205,7 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base_link"), "threshold": 1.0},
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="collisions"), "threshold": 1.0},
     )
 
 
@@ -226,19 +227,33 @@ class NavigationEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 0.005
         self.sim.render_interval = 4
         self.decimation = 4
-        self.episode_length_s = 8.0
+        self.episode_length_s = 20.0
 
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
 
+@configclass
+class NavigationEnvCfg_GRAPH(NavigationEnvCfg):
+    scene: SceneEntityCfg = NavigationSceneCfg(num_envs=2, env_spacing=1)
+    commands: CommandsCfg = CommandsCfg()
+    actions: ActionsCfg = ActionsCfg()
+    observations: ObservationsCfg = ObservationsCfg()
+    rewards: RewardsCfg = RewardsCfg()
+    events: EventCfg = EventCfg()
 
-class NavigationEnvCfg_PLAY(NavigationEnvCfg):
-    def __post_init__(self) -> None:
-        # post init of parent
-        super().__post_init__()
+    curriculum: CurriculumCfg = CurriculumCfg()
+    terminations: TerminationsCfg = TerminationsCfg()
 
-        # make a smaller scene for play
-        self.scene.num_envs = 50
-        self.scene.env_spacing = 2.5
-        # disable randomization for play
-        self.observations.policy.enable_corruption = False
+    graph_builder : None
+
+
+    def __post_init__(self):
+        """Post initialization."""
+
+        self.sim.dt = 0.005
+        self.sim.render_interval = 4
+        self.decimation = 4
+        self.episode_length_s = 20.0
+
+        if self.scene.contact_forces is not None:
+            self.scene.contact_forces.update_period = self.sim.dt

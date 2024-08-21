@@ -52,20 +52,38 @@ import torch
 import gymnasium as gym
 import omni.isaac.lab_tasks  # noqa: F401
 from omni.isaac.lab_tasks.utils import parse_env_cfg
-import isaac.envs.env_cfg
+import isaac.envs.navigation.NavigationEnvCfg_GRAPH as NavigationEnvCfg_GRAPH
+from isaac.assets.graph_build import GraphBuilder
+from isaac.wrapper import IsaacEnv
 
 
 def main():
     """Main function."""
-    # setup base environment
-    #env_cfg = TurtlebotEnvCfg()
-    #env = ManagerBasedEnv(env_cfg)
+    ALL_EDGES_FILE_PATH = "/path/to/edges.txt"
+    POLICY_FILE_PATH = "/path/to/policy.pth"
 
-    env_cfg = parse_env_cfg(
-        "Turtlebot-Navigation-v0", use_gpu=True, num_envs=args_cli.num_envs, use_fabric=True
-    )
-    # create environment
-    env = gym.make("Turtlebot-Navigation-v0", cfg=env_cfg, render_mode="rgb_array")
+    edges = torch.load(ALL_EDGES_FILE_PATH)
+
+    graph_builder = GraphBuilder(edges)
+    env_cfg = NavigationEnvCfg_GRAPH(graph_builder=graph_builder)
+
+    # setup RL environment
+    env = ManagerBasedRLEnv(cfg=env_cfg)
+    env = IsaacEnv(env=env, num_envs=1)
+
+    polciy = torch.load(POLICY_FILE_PATH)
+
+    while graph_builder.not_ready():
+        td = env.reset()
+        env.rollout(
+            policy=polciy,
+            max_steps=1,
+            render_mode="rgb_array",
+            render_kwargs={"mode": "human"},
+            tensordict=td,
+        )
+        # check if it succeeded
+        # update graph
 
     if args_cli.video:
         video_kwargs = {

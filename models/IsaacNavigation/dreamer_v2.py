@@ -249,7 +249,7 @@ class DreamerV2:
             mb_env_obs_decoder = SafeModule(
                 self.networks["depth_decoder"],
                 in_keys=["state", "belief"],
-                out_keys=[self.keys["observation_out_key"]],
+                out_keys=["reco_depth"],
             )
         else:
             mb_env_obs_decoder = None

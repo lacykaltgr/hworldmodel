@@ -62,7 +62,7 @@ logger:
   exp_name: ${env.name}-${env.task}-${env.seed}
   mode: online
   # eval interval, in collection counts
-  eval_iter: 100
+  eval_iter: 5
   eval_rollout_steps: 500
   video: True
   enable_profiler: False

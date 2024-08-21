@@ -138,6 +138,8 @@ class DreamerModelLoss(LossModule):
         )
         
         tensordict = self.world_model(tensordict)
+
+        depth = tensordict.get(("next", "depth"))
     
         # kl divergence loss
         kl_prior = self.kl_loss(
@@ -157,7 +159,6 @@ class DreamerModelLoss(LossModule):
             self.kl_balance * kl_prior + (1 - self.kl_balance) * kl_post
         ).unsqueeze(-1)
         
-        
         depth_reco_loss = 0.5 * distance_loss(
             tensordict.get(("next", "depth")),
             tensordict.get(("next", "reco_depth")),
@@ -172,7 +173,7 @@ class DreamerModelLoss(LossModule):
             tensordict.get(("next", "reco_velocity")),
             self.reco_loss,
         )
-        reco_loss = command_reco_loss.mean().unsqueeze(-1)
+        reco_loss = velocity_reco_loss.mean().unsqueeze(-1)
         
         command_reco_loss = 0.5 * distance_loss(
             tensordict.get(("next", "command")),
