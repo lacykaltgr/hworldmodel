@@ -7,6 +7,7 @@ from torchrl.record import VideoRecorder
 from torchrl.modules.models.model_based import RSSMRollout
 from .objectives import DreamerModelLoss, DreamerActorLoss, DreamerValueLoss
 from .dreamer_v2 import DreamerV2
+from .modules import IsaacVideoRecorder
 
 def make_model(
     cfg,
@@ -94,18 +95,33 @@ def make_model(
 
         def depth_to_rgb(data):
             # depth is in range [-1, 1]
-            depth = data.get("reco_depth")
+            reco_depth = data.get("reco_depth")
+            reco_depth = (reco_depth * 255).floor()
+            reco_depth = reco_depth.to(torch.uint8)
+            reco_depth = torch.cat([reco_depth, reco_depth, reco_depth], dim=1)
+            
+            depth = data.get("depth")
             depth = (depth * 255).floor()
             depth = depth.to(torch.uint8)
             depth = torch.cat([depth, depth, depth], dim=1)
-            return data.set("reco_depth_rgb", depth)
+
+            data.set("reco_depth_rgb", reco_depth)
+            data.set("depth_rgb", depth)
+
+            return data
 
         model_based_env_eval.append_transform(depth_to_rgb)
         model_based_env_eval.append_transform(
-            VideoRecorder(
+            IsaacVideoRecorder(
                 logger=logger, tag="eval/simulated_rendering", in_keys=["reco_depth_rgb"]
             )
         )
+        model_based_env_eval.append_transform(
+            IsaacVideoRecorder(
+                logger=logger, tag="eval/rendering", in_keys=["depth_rgb"]
+            )
+        )
+
     else:
         model_based_env_eval = None
     

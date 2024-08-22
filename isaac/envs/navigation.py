@@ -54,7 +54,7 @@ class NavigationSceneCfg(InteractiveSceneCfg):
 
     camera = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base_link/Camera",
-        update_period=1/30,
+        update_period=0.0,
         height=240,
         width=320,
         data_types=["distance_to_image_plane"],
@@ -205,7 +205,7 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="collisions"), "threshold": 1.0},
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base_link"), "threshold": 5.0},
     )
 
 
@@ -244,15 +244,15 @@ class NavigationEnvCfg_GRAPH(NavigationEnvCfg):
     curriculum: CurriculumCfg = CurriculumCfg()
     terminations: TerminationsCfg = TerminationsCfg()
 
-    graph_builder : None
+    #graph_builder : None
 
 
     def __post_init__(self):
         """Post initialization."""
 
-        self.sim.dt = 0.005
-        self.sim.render_interval = 4
-        self.decimation = 4
+        self.sim.dt = 0.01
+        self.sim.render_interval = 1
+        self.decimation = 20
         self.episode_length_s = 20.0
 
         if self.scene.contact_forces is not None:

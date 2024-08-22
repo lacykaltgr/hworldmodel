@@ -173,14 +173,14 @@ class DreamerModelLoss(LossModule):
             tensordict.get(("next", "reco_velocity")),
             self.reco_loss,
         )
-        reco_loss = velocity_reco_loss.mean().unsqueeze(-1)
+        velocity_reco_loss = velocity_reco_loss.mean().unsqueeze(-1)
         
         command_reco_loss = 0.5 * distance_loss(
             tensordict.get(("next", "command")),
             tensordict.get(("next", "reco_command")),
             self.reco_loss,
         )
-        reco_loss = command_reco_loss.mean().unsqueeze(-1)
+        command_reco_loss = command_reco_loss.mean().unsqueeze(-1)
         
         
 
@@ -199,6 +199,8 @@ class DreamerModelLoss(LossModule):
                     "loss_model_kl": self.lambda_kl * kl_loss,
                     "loss_model_reco": self.lambda_reco * reco_loss,
                     "loss_model_reward": self.lambda_reward * reward_loss,
+                    "loss_model_velocity": velocity_reco_loss,
+                    "loss_model_command": command_reco_loss
                 },
                 [],
             ),

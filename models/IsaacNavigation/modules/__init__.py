@@ -19,3 +19,5 @@ from .rssm import (
 
 from .mb_env import DreamerEnv
 from .actor import DreamerActorV2
+
+from .isaac_video_recorder import IsaacVideoRecorder

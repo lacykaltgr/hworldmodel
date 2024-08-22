@@ -44,13 +44,13 @@ networks:
     device: null
   state_dim: 32
   state_vars: 32
-  rssm_hidden_dim: 50
-  hidden_dim: 100
+  rssm_hidden_dim: 200
+  hidden_dim: 400
   activation: "elu"
 
 
 replay_buffer: 
-  batch_size: 500
+  batch_size: 2500
   buffer_size: 1000000
   batch_length: 50
   scratch_dir: null

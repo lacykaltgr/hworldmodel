@@ -85,40 +85,6 @@ def main():
         # check if it succeeded
         # update graph
 
-    if args_cli.video:
-        video_kwargs = {
-            "video_folder": "/logs",
-            "step_trigger": lambda step: step % args_cli.video_interval == 0,
-            "video_length": args_cli.video_length,
-            "disable_logger": True,
-        }
-        print("[INFO] Recording videos during training.")
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
-
-    print(f"[INFO]: Environment observation space: {env_cfg.observations}")
-    print(f"[INFO]: Environment action space: {env_cfg.actions}")
-
-    # simulate physics
-    count = 0
-    obs, _ = env.reset()
-    while simulation_app.is_running():
-        with torch.inference_mode():
-            # reset
-            if count % 1000 == 0:
-                obs, _ = env.reset()
-                count = 0
-                print("-" * 80)
-                print("[INFO]: Resetting environment...")
-            # infer action
-            action = torch.tensor([1, -0.5])
-            # take action n_envs times
-            action = action.repeat(env.num_envs, 1)
-            # step env
-            obs, rew, terminated, truncated, info = env.step(action)
-
-            # update counter
-            count += 1
-
     # close the environment
     env.close()
 
