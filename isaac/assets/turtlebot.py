@@ -25,11 +25,11 @@ TURTLEBOT4_CFG = ArticulationCfg(
     actuators={
         "wheels": IdealPDActuatorCfg(
             joint_names_expr=[".*_wheel_joint"],
-            stiffness=0.0,
-            damping=5000,
+            stiffness=1000.0,
+            damping=500,
             effort_limit=8.0,
             velocity_limit=8.0,
-            friction=15.0,
+            friction=1.0,
         ),
     },
 )
