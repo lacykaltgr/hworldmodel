@@ -139,8 +139,6 @@ class CommandsCfg:
     null = mdp.NullCommandCfg()
 
 
-
-
 @configclass
 class TurtlebotEnvCfg(ManagerBasedRLEnvCfg):
 
@@ -161,3 +159,5 @@ class TurtlebotEnvCfg(ManagerBasedRLEnvCfg):
         #self.sim.dt = 0.005  # simulation timestep -> 200 Hz physics
         self.sim.dt = 0.01  # simulation timestep -> 100 Hz physics
         self.episode_length_s = 50.0
+
+    

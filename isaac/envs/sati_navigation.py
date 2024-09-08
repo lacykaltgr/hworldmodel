@@ -31,7 +31,7 @@ from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
 
-from isaac.assets.turtlebot import NOVABOT_CFG
+from isaac.assets.turtlebot import SATIDOG_CFG
 from isaac.assets.camera_observationterm import camera_depth
 from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
@@ -50,10 +50,10 @@ class NavigationSceneCfg(InteractiveSceneCfg):
       )    
     )
 
-    robot: ArticulationCfg = NOVABOT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+    robot: ArticulationCfg = SATIDOG_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     camera = CameraCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/chassis_link/Camera",
+        prim_path="{ENV_REGEX_NS}/Robot/base/Camera",
         update_period=0.0,
         height=240,
         width=320,
@@ -65,7 +65,7 @@ class NavigationSceneCfg(InteractiveSceneCfg):
     )
 
     contact_forces = ContactSensorCfg(
-         prim_path="{ENV_REGEX_NS}/Robot/chassis_link", 
+         prim_path="{ENV_REGEX_NS}/Robot/base", 
          update_period=0.0, 
          history_length=6, 
          debug_vis=True
@@ -103,15 +103,7 @@ class EventCfg:
 class ActionsCfg:
     """Action terms for the MDP."""
 
-    control = WheeledRobotActionTermCfg(
-        asset_name="robot",
-        joint_names=["joint_wheel_.*"],
-        wheel_radius = 0.14,
-        wheel_base = 0.413,
-        max_linear_speed = 2.0,
-        max_angular_speed = 3.0,
-        max_wheel_speed = 2.0 / 0.14
-    )
+    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
 
 @configclass
 class ObservationsCfg:
@@ -205,7 +197,7 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="chassis_link"), "threshold": 1.0},
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
     )
 
 

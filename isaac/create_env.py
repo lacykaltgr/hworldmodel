@@ -26,7 +26,7 @@ from omni.isaac.lab.app import AppLauncher
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Tutorial on creating a quadruped base environment.")
-parser.add_argument("--num_envs", type=int, default=2, help="Number of environments to spawn.")
+parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to spawn.")
 parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
 parser.add_argument("--video_length", type=int, default=200, help="Length of the recorded video (in steps).")
 parser.add_argument("--video_interval", type=int, default=2000, help="Interval between video recordings (in steps).")
@@ -62,10 +62,10 @@ def main():
     #env = ManagerBasedEnv(env_cfg)
 
     env_cfg = parse_env_cfg(
-        "Turtlebot-Navigation-v0", use_gpu=True, num_envs=args_cli.num_envs, use_fabric=True
+        "Sati-Navigation-v0", num_envs=args_cli.num_envs, use_fabric=True
     )
     # create environment
-    env = gym.make("Turtlebot-Navigation-v0", cfg=env_cfg, render_mode="rgb_array")
+    env = gym.make("Sati-Navigation-v0", cfg=env_cfg, render_mode="rgb_array")
 
     if args_cli.video:
         video_kwargs = {
@@ -92,10 +92,12 @@ def main():
                 print("-" * 80)
                 print("[INFO]: Resetting environment...")
             # infer action
-            action = torch.tensor([1, -0.5])
+            action = torch.tensor([2, 0, 0, 1, 2, 6, 7])
             # take action n_envs times
             action = action.repeat(env.num_envs, 1)
             # step env
+            # import pdb
+            # pdb.set_trace()
             obs, rew, terminated, truncated, info = env.step(action)
 
             # update counter

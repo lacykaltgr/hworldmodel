@@ -1,5 +1,5 @@
 env:
-  name: Turtlebot-Navigation-v0
+  name: Sati-Navigation-v0
   task: 
   seed: 0
   backend: isaac_lab
@@ -58,7 +58,7 @@ replay_buffer:
 logger:
   model_name: IsaacNavigation
   backend: wandb
-  project: dreamer-v2
+  project: isaac_cimbi
   exp_name: ${env.name}-${env.task}-${env.seed}
   mode: online
   # eval interval, in collection counts

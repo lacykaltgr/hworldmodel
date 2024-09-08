@@ -28,7 +28,7 @@ class IsaacEnv(GymWrapper):
         assert env_name is None or env is None, "Only one of env_name or env must be provided."
 
         if env is None:
-            env_cfg = parse_env_cfg(env_name, use_gpu=True, num_envs=num_envs, use_fabric=use_fabric)
+            env_cfg = parse_env_cfg(env_name, num_envs=num_envs, use_fabric=use_fabric)
             env = gym.make(env_name, cfg=env_cfg)
 
         env = GymIsaacWrapper(env)
