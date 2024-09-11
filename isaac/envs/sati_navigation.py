@@ -56,6 +56,16 @@ class NavigationSceneCfg(InteractiveSceneCfg):
     )
     #'''
 
+    ''' 
+    # Residance usd file from HDD2
+    room = AssetBaseCfg(
+        prim_path="/World/office", 
+        spawn=sim_utils.UsdFileCfg(
+            usd_path=f"/mnt/HDD2/data/isaac_residance.usd",
+      )    
+    )
+    #'''
+
     '''
     # ground terrain
     terrain = TerrainImporterCfg(
