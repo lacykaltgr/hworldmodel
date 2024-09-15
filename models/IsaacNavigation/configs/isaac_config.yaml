@@ -8,7 +8,7 @@ env:
   grayscale: False
   image_size : 64
   horizon: 500
-  n_parallel_envs: 2
+  n_parallel_envs: 1
   device: 
     _target_: hworldmodel.utils._default_device
     device: null

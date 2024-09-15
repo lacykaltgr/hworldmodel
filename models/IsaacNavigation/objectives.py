@@ -139,8 +139,6 @@ class DreamerModelLoss(LossModule):
         
         tensordict = self.world_model(tensordict)
 
-        depth = tensordict.get(("next", "depth"))
-    
         # kl divergence loss
         kl_prior = self.kl_loss(
             tensordict.get(("next", self.tensor_keys.prior)),
@@ -181,12 +179,38 @@ class DreamerModelLoss(LossModule):
             self.reco_loss,
         )
         command_reco_loss = command_reco_loss.mean().unsqueeze(-1)
-        
-        
 
+        gravity_reco_loss = 0.5 * distance_loss(
+            tensordict.get(("next", "gravity")),
+            tensordict.get(("next", "reco_gravity")),
+            self.reco_loss,
+        )
+        gravity_reco_loss = gravity_reco_loss.mean().unsqueeze(-1)
+        
+        joints_reco_loss = 0.5 * distance_loss(
+            tensordict.get(("next", "joints")),
+            tensordict.get(("next", "reco_joints")),
+            self.reco_loss,
+        )
+        joints_reco_loss = joints_reco_loss.mean().unsqueeze(-1)
+        
+        actions_reco_loss = 0.5 * distance_loss(
+            tensordict.get(("next", "actions")),
+            tensordict.get(("next", "reco_actions")),
+            self.reco_loss,
+        )
+        actions_reco_loss = actions_reco_loss.mean().unsqueeze(-1)
+        
+        height_reco_loss = 0.5 * distance_loss(
+            tensordict.get(("next", "height")),
+            tensordict.get(("next", "reco_height")),
+            self.reco_loss,
+        )
+        height_reco_loss = height_reco_loss.mean().unsqueeze(-1)
+        
         reward_loss = distance_loss(
             tensordict.get(("next", self.tensor_keys.true_reward)),
-            tensordict.get(("next", self.tensor_keys.reward)),
+            tensordict.get(("next", self.tensor_keys.reward))[:,:,0],
             self.reward_loss,
         )
         if not self.global_average:
@@ -200,7 +224,11 @@ class DreamerModelLoss(LossModule):
                     "loss_model_reco": self.lambda_reco * reco_loss,
                     "loss_model_reward": self.lambda_reward * reward_loss,
                     "loss_model_velocity": velocity_reco_loss,
-                    "loss_model_command": command_reco_loss
+                    "loss_model_command": command_reco_loss,
+                    "loss_model_gravity": gravity_reco_loss,
+                    "loss_model_joints": joints_reco_loss,
+                    "loss_model_actions": actions_reco_loss,
+                    "loss_model_height": height_reco_loss
                 },
                 [],
             ),
@@ -225,7 +253,6 @@ class DreamerModelLoss(LossModule):
     def get_distribution(self, logits):
         dist = Independent(OneHotCategorical(logits=logits, grad_method=Repa.PassThrough), 1)
         return dist
-    
     
     
 
@@ -325,10 +352,10 @@ class DreamerActorLoss(LossModule):
 
         reward = fake_data.get(("next", self.tensor_keys.reward))
         next_value = next_tensordict.get(self.tensor_keys.value)
-        lambda_target = self.lambda_target(reward, next_value)
+        lambda_target = self.lambda_target(reward, next_value[:,:,0])
         fake_data.set("lambda_target", lambda_target)
 
-        entropy = self.actor_model.get_dist(fake_data).entropy.sum(-1).unsqueeze(-1)
+        entropy = self.actor_model.get_dist(fake_data).entropy.sum(-1)
         entropy_loss = self.policy_ent_scale * entropy
         
         if self.discount_loss:
@@ -464,12 +491,12 @@ class DreamerValueLoss(LossModule):
             )
             discount[..., 0, :] = 1
             discount = discount.cumprod(dim=-2)
-            
+
             value_loss = (
                 0.5 * (
                     discount
                     * distance_loss(
-                        tensordict_select.get(self.tensor_keys.value),
+                        tensordict_select.get(self.tensor_keys.value)[:,:,0],
                         lambda_target,
                         self.value_loss,
                     )

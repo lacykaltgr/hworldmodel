@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import math
+import torch
 
 from omni.isaac.lab.envs import ManagerBasedRLEnvCfg
 from omni.isaac.lab.managers import EventTermCfg as EventTerm
@@ -40,8 +41,14 @@ from isaac.assets.camera_observationterm import camera_depth
 from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
+from assets.curriculum import task_order
 
-from assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs
+from assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs, height_scan
+
+from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
+
+
+LOW_LEVEL_ENV_CFG = AnymalCFlatEnvCfg()
 
 
 @configclass
@@ -52,8 +59,13 @@ class NavigationSceneCfg(InteractiveSceneCfg):
         prim_path="/World/office", 
         spawn=sim_utils.UsdFileCfg(
             usd_path=f"http://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/4.0/Isaac/Environments/Simple_Warehouse/warehouse_multiple_shelves.usd",
-      )    
+        )  
     )
+    '''
+    spawn=sim_utils.UsdFileCfg(
+        usd_path=f"http://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/4.1/Isaac/Environments/Office/office.usd",
+    )
+    #'''  
     #'''
 
     ''' 
@@ -130,6 +142,7 @@ class NavigationSceneCfg(InteractiveSceneCfg):
 class EventCfg:
     """Configuration for events."""
 
+    '''
     # startup
     physics_material = EventTerm(
         func=mdp.randomize_rigid_body_material,
@@ -142,7 +155,9 @@ class EventCfg:
             "num_buckets": 64,
         },
     )
+    '''
 
+    '''
     add_base_mass = EventTerm(
         func=mdp.randomize_rigid_body_mass,
         mode="startup",
@@ -152,6 +167,7 @@ class EventCfg:
             "operation": "add",
         },
     )
+    '''
 
     # reset
     base_external_force_torque = EventTerm(
@@ -179,7 +195,6 @@ class EventCfg:
             },
         },
     )
-
     reset_robot_joints = EventTerm(
         func=mdp.reset_joints_by_scale,
         mode="reset",
@@ -188,7 +203,7 @@ class EventCfg:
             "velocity_range": (0.0, 0.0),
         },
     )
-
+    '''
     # interval
     push_robot = EventTerm(
         func=mdp.push_by_setting_velocity,
@@ -196,6 +211,7 @@ class EventCfg:
         interval_range_s=(10.0, 15.0),
         params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
     )
+    '''
 
 
 
@@ -203,11 +219,29 @@ class EventCfg:
 class ActionsCfg:
     """Action terms for the MDP."""
 
-    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
+    # joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
+
+    pre_trained_policy_action: mdp_navigation.PreTrainedPolicyActionCfg = mdp_navigation.PreTrainedPolicyActionCfg(
+        asset_name="robot",
+        policy_path=f"{ISAACLAB_NUCLEUS_DIR}/Policies/ANYmal-C/Blind/policy.pt",
+        low_level_decimation=4,
+        low_level_actions=LOW_LEVEL_ENV_CFG.actions.joint_pos,
+        low_level_observations=LOW_LEVEL_ENV_CFG.observations.policy,
+    )
 
 @configclass
 class ObservationsCfg:
     """Observation specifications for the MDP."""
+
+    @configclass
+    class DepthObsCfg(ObsGroup):
+        """Observations for depth group."""
+
+        camera_depth = ObsTerm(func=camera_depth)
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
 
     @configclass
     class VelocityObsCfg(ObsGroup):
@@ -275,22 +309,12 @@ class ObservationsCfg:
         """Observations for height scan group."""
 
         height_scan = ObsTerm(
-            func=mdp.height_scan,
+            func=height_scan,
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
             noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(-1.0, 1.0),
         )
         
-        def __post_init__(self):
-            self.enable_corruption = True
-            self.concatenate_terms = True
-
-    @configclass
-    class DepthObsCfg(ObsGroup):
-        """Observations for depth group."""
-
-        camera_depth = ObsTerm(func=camera_depth)
-
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True
@@ -304,7 +328,7 @@ class ObservationsCfg:
     gravity = GravityCfg()
     joints = JointCfg()
     actions = ActionsCfg()
-    height_scan = HeightScanCfg()
+    height = HeightScanCfg()
     depth = DepthObsCfg()
 
 
@@ -344,6 +368,12 @@ class RewardsCfg:
     flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=0.0)
     dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
 
+    undesired_contacts = RewTerm(
+        func=mdp.undesired_contacts,
+        weight=-4.0,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
+    )
+
 
 @configclass
 class CommandsCfg:
@@ -366,8 +396,7 @@ class CommandsCfg:
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
-
-    # terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
+    task_difficulty = CurrTerm(func=task_order)
     pass
 
 
@@ -377,10 +406,6 @@ class TerminationsCfg:
     """Termination terms for the MDP."""
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    base_contact = DoneTerm(
-        func=mdp.illegal_contact,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
-    )
 
 
 @configclass
