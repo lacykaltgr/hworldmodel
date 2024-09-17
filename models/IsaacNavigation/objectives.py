@@ -212,7 +212,7 @@ class DreamerModelLoss(LossModule):
         
         reward_loss = distance_loss(
             tensordict.get(("next", self.tensor_keys.true_reward)),
-            tensordict.get(("next", self.tensor_keys.reward))[:,:,0],
+            tensordict.get(("next", self.tensor_keys.reward)), # [:,:,0]
             self.reward_loss,
         )
         if not self.global_average:
@@ -354,10 +354,10 @@ class DreamerActorLoss(LossModule):
 
         reward = fake_data.get(("next", self.tensor_keys.reward))
         next_value = next_tensordict.get(self.tensor_keys.value)
-        lambda_target = self.lambda_target(reward, next_value[:,:,0])
+        lambda_target = self.lambda_target(reward, next_value) # [:,:,0]
         fake_data.set("lambda_target", lambda_target)
 
-        entropy = self.actor_model.get_dist(fake_data).entropy.sum(-1)
+        entropy = self.actor_model.get_dist(fake_data).entropy.sum(-1).unsqueeze(-1)
         entropy_loss = self.policy_ent_scale * entropy
         
         if self.discount_loss:
@@ -498,7 +498,7 @@ class DreamerValueLoss(LossModule):
                 0.5 * (
                     discount
                     * distance_loss(
-                        tensordict_select.get(self.tensor_keys.value)[:,:,0],
+                        tensordict_select.get(self.tensor_keys.value), # [:,:,0]
                         lambda_target,
                         self.value_loss,
                     )
