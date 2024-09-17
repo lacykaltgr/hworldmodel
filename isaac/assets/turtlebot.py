@@ -119,7 +119,7 @@ SATIDOG_CFG = ArticulationCfg(
         # collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.02, rest_offset=0.0),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(3.0, 3.0, 0.6),
+        pos=(0.0, 0.0, 0.6),
         joint_pos={
             ".*HAA": 0.0,  # all HAA
             ".*F_HFE": 0.4,  # both front HFE

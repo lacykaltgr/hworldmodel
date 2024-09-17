@@ -68,19 +68,12 @@ class DreamerV2:
         return nn.ModuleDict(modules = dict(
                 depth_encoder = ObsEncoder(),
                 depth_decoder = DepthDecoder(),
-                velocity_encoder = MLP(out_features=16, depth=1, num_cells=16, activation_class=activation),
-                veolcity_decoder = MLP(out_features=6, depth=1, num_cells=16, activation_class=activation),
-                command_encoder = MLP(out_features=16, depth=1, num_cells=16, activation_class=activation),
-                command_decoder = MLP(out_features=3, depth=1, num_cells=16, activation_class=activation),
-
-                gravity_encoder = MLP(out_features=16, depth=1, num_cells=16, activation_class=activation),
-                gravity_decoder = MLP(out_features=3, depth=1, num_cells=16, activation_class=activation),
-                joints_encoder = MLP(out_features=128, depth=1, num_cells=128, activation_class=activation),
-                joints_decoder = MLP(out_features=24, depth=1, num_cells=128, activation_class=activation),
-                actions_encoder = MLP(out_features=16, depth=1, num_cells=16, activation_class=activation),
-                actions_decoder = MLP(out_features=3, depth=1, num_cells=16, activation_class=activation),
-                height_encoder = MLP(out_features=8, depth=1, num_cells=8, activation_class=activation),
-                height_decoder = MLP(out_features=1, depth=1, num_cells=8, activation_class=activation),
+                velocity_encoder = MLP(out_features=16, depth=1, num_cells=64, activation_class=activation),
+                veolcity_decoder = MLP(out_features=6, depth=1, num_cells=64, activation_class=activation),
+                command_encoder = MLP(out_features=16, depth=1, num_cells=64, activation_class=activation),
+                command_decoder = MLP(out_features=3, depth=1, num_cells=64, activation_class=activation),
+                gravity_encoder = MLP(out_features=16, depth=1, num_cells=64, activation_class=activation),
+                gravity_decoder = MLP(out_features=3, depth=1, num_cells=64, activation_class=activation),
 
                 joint_encoder = MLP(out_features=1024, depth=3, num_cells=1280, activation_class=activation),
                 
@@ -206,25 +199,26 @@ class DreamerV2:
                 in_keys=["gravity"],
                 out_keys=["encoded_gravity"],
             ),
-            SafeModule(
-                self.networks["joints_encoder"],
-                in_keys=["joints"],
-                out_keys=["encoded_joints"],
-            ),
-            SafeModule(
-                self.networks["actions_encoder"],
-                in_keys=["actions"],
-                out_keys=["encoded_actions"],
-            ),
-            SafeModule(
-                self.networks["height_encoder"],
-                in_keys=["height"],
-                out_keys=["encoded_height"],
-            ),
+
+            # SafeModule(
+            #     self.networks["joints_encoder"],
+            #     in_keys=["joints"],
+            #     out_keys=["encoded_joints"],
+            # ),
+            # SafeModule(
+            #     self.networks["actions_encoder"],
+            #     in_keys=["actions"],
+            #     out_keys=["encoded_actions"],
+            # ),
+            # SafeModule(
+            #     self.networks["height_encoder"],
+            #     in_keys=["height"],
+            #     out_keys=["encoded_height"],
+            # ),
             
             SafeModule(
                 self.networks["joint_encoder"],
-                in_keys=["encoded_depth", "encoded_velocity", "encoded_command", "encoded_gravity", "encoded_joints", "encoded_actions", "encoded_height"],
+                in_keys=["encoded_depth", "encoded_velocity", "encoded_command", "encoded_gravity"], # , "encoded_joints", "encoded_actions", "encoded_height"
                 out_keys=["encoded_latents"],
             ),  
             
@@ -351,25 +345,27 @@ class DreamerV2:
                 in_keys=[("next", "gravity")],
                 out_keys=[("next", "encoded_gravity")],
             ),
-            SafeModule(
-                self.networks["joints_encoder"],
-                in_keys=[("next", "joints")],
-                out_keys=[("next", "encoded_joints")],
-            ),
-            SafeModule(
-                self.networks["actions_encoder"],
-                in_keys=[("next", "actions")],
-                out_keys=[("next", "encoded_actions")],
-            ),
-            SafeModule(
-                self.networks["height_encoder"],
-                in_keys=[("next", "height")],
-                out_keys=[("next", "encoded_height")],
-            ),
+
+            # SafeModule(
+            #     self.networks["joints_encoder"],
+            #     in_keys=[("next", "joints")],
+            #     out_keys=[("next", "encoded_joints")],
+            # ),
+            # SafeModule(
+            #     self.networks["actions_encoder"],
+            #     in_keys=[("next", "actions")],
+            #     out_keys=[("next", "encoded_actions")],
+            # ),
+            # SafeModule(
+            #     self.networks["height_encoder"],
+            #     in_keys=[("next", "height")],
+            #     out_keys=[("next", "encoded_height")],
+            # ),
+
             SafeModule(
                 self.networks["joint_encoder"],
-                in_keys=[("next", "encoded_depth"), ("next", "encoded_velocity"), ("next", "encoded_command"), 
-                         ("next", "encoded_gravity"), ("next", "encoded_joints"), ("next", "encoded_actions"), ("next", "encoded_height")],
+                in_keys=[("next", "encoded_depth"), ("next", "encoded_velocity"), ("next", "encoded_command"), ("next", "encoded_gravity")],
+                # , ("next", "encoded_joints"), ("next", "encoded_actions"), ("next", "encoded_height")
                 out_keys=[("next", "encoded_latents")],
             ),
         )
@@ -395,21 +391,22 @@ class DreamerV2:
                 in_keys=[("next", "state"), ("next", "belief")],
                 out_keys=[("next", "reco_gravity")],
             ),
-            SafeModule(
-                self.networks["joints_decoder"],
-                in_keys=[("next", "state"), ("next", "belief")],
-                out_keys=[("next", "reco_joints")],
-            ),
-            SafeModule(
-                self.networks["actions_decoder"],
-                in_keys=[("next", "state"), ("next", "belief")],
-                out_keys=[("next", "reco_actions")],
-            ),
-            SafeModule(
-                self.networks["height_decoder"],
-                in_keys=[("next", "state"), ("next", "belief")],
-                out_keys=[("next", "reco_height")],
-            ),
+
+            # SafeModule(
+            #     self.networks["joints_decoder"],
+            #     in_keys=[("next", "state"), ("next", "belief")],
+            #     out_keys=[("next", "reco_joints")],
+            # ),
+            # SafeModule(
+            #     self.networks["actions_decoder"],
+            #     in_keys=[("next", "state"), ("next", "belief")],
+            #     out_keys=[("next", "reco_actions")],
+            # ),
+            # SafeModule(
+            #     self.networks["height_decoder"],
+            #     in_keys=[("next", "state"), ("next", "belief")],
+            #     out_keys=[("next", "reco_height")],
+            # ),
         )
 
         

@@ -128,7 +128,7 @@ class GymIsaacWrapper(VectorEnv):
 
     def step_wait(self):  # noqa: D102
         # Record step information
-        obs_dict, rew, terminated, truncated, extras = self.env.step(self._async_actions)
+        obs_dict, rew, terminated, truncated, info = self.env.step(self._async_actions)
         # Update episode un-discounted return and length
         self._ep_rew_buf += rew
         self._ep_len_buf += 1
@@ -144,7 +144,7 @@ class GymIsaacWrapper(VectorEnv):
 
         # Convert extra information to list of dicts
         #infos = self._process_extras(obs, extras, reset_ids)
-        infos = extras
+        infos = info
 
         # Reset info for terminated environments
         self._ep_rew_buf[reset_ids] = 0

@@ -154,6 +154,7 @@ class ObservationsCfg:
     velocity = VelocityObsCfg()
     command = CommandObsCfg()
     depth = DepthObsCfg()
+    
 
 
 @configclass

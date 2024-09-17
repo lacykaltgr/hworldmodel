@@ -187,6 +187,7 @@ class DreamerModelLoss(LossModule):
         )
         gravity_reco_loss = gravity_reco_loss.mean().unsqueeze(-1)
         
+        '''
         joints_reco_loss = 0.5 * distance_loss(
             tensordict.get(("next", "joints")),
             tensordict.get(("next", "reco_joints")),
@@ -207,6 +208,7 @@ class DreamerModelLoss(LossModule):
             self.reco_loss,
         )
         height_reco_loss = height_reco_loss.mean().unsqueeze(-1)
+        '''
         
         reward_loss = distance_loss(
             tensordict.get(("next", self.tensor_keys.true_reward)),
@@ -226,9 +228,9 @@ class DreamerModelLoss(LossModule):
                     "loss_model_velocity": velocity_reco_loss,
                     "loss_model_command": command_reco_loss,
                     "loss_model_gravity": gravity_reco_loss,
-                    "loss_model_joints": joints_reco_loss,
-                    "loss_model_actions": actions_reco_loss,
-                    "loss_model_height": height_reco_loss
+                    # "loss_model_joints": joints_reco_loss,
+                    # "loss_model_actions": actions_reco_loss,
+                    # "loss_model_height": height_reco_loss
                 },
                 [],
             ),
