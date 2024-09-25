@@ -71,7 +71,7 @@ class DreamerV2:
                 velocity_encoder = MLP(out_features=16, depth=1, num_cells=64, activation_class=activation),
                 veolcity_decoder = MLP(out_features=6, depth=1, num_cells=64, activation_class=activation),
                 command_encoder = MLP(out_features=16, depth=1, num_cells=64, activation_class=activation),
-                command_decoder = MLP(out_features=3, depth=1, num_cells=64, activation_class=activation),
+                command_decoder = MLP(out_features=4, depth=1, num_cells=64, activation_class=activation),
                 gravity_encoder = MLP(out_features=16, depth=1, num_cells=64, activation_class=activation),
                 gravity_decoder = MLP(out_features=3, depth=1, num_cells=64, activation_class=activation),
 
