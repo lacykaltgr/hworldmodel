@@ -17,7 +17,7 @@ def enable_base_collision(env: ManagerBasedRLEnv) -> torch.Tensor:
     print("itt voltam")
 
 
-def task_order(env: ManagerBasedRLEnv, env_ids, num_steps = 25000) -> torch.Tensor:
+def task_order(env: ManagerBasedRLEnv, env_ids, num_steps = 4200) -> torch.Tensor:
     """
     Curriculum logic to switch between standing and walking tasks by altering termination conditions.
     """

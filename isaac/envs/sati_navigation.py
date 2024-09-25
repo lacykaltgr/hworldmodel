@@ -209,7 +209,7 @@ class CommandsCfg:
     pose_command = mdp.UniformPose2dCommandCfg(
         asset_name="robot",
         simple_heading=True,
-        resampling_time_range=(8.0, 8.0),
+        resampling_time_range=(20.0, 20.0),
         debug_vis=True,
         ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
     )
@@ -239,7 +239,7 @@ class NavigationEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Scene settings
-    scene: SceneEntityCfg = NavigationSceneCfg(num_envs=4, env_spacing=2.5)
+    scene: SceneEntityCfg = NavigationSceneCfg(num_envs=4, env_spacing=1.5)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
