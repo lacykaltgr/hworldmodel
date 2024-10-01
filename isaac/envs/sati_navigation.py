@@ -43,6 +43,8 @@ from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
 from assets.curriculum import task_order
 
+from dataclasses import MISSING
+
 from assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs, height_scan
 
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
@@ -85,7 +87,7 @@ class NavigationSceneCfg(InteractiveSceneCfg):
         spawn=PinholeCameraCfg(
             focal_length=7, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.01, 10)
         ),
-        offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.5), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
+        offset=CameraCfg.OffsetCfg(pos=(-10.0, -1.0, 0.5), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
     )
 
 
@@ -95,9 +97,9 @@ class EventCfg:
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+            "pose_range": {"x": (-10.8044, -10.8044), "y": (-3.4775763, -3.4775763), "yaw": (1.3115901, 1.3115901)},
             "velocity_range": {
-                "x": (-0.0, 0.0),
+                "x": (-0.0, -0.0),
                 "y": (-0.0, 0.0),
                 "z": (-0.0, 0.0),
                 "roll": (-0.0, 0.0),
@@ -206,13 +208,32 @@ class RewardsCfg:
 class CommandsCfg:
     """Command specifications for the MDP."""
 
+    #'''
     pose_command = mdp.UniformPose2dCommandCfg(
         asset_name="robot",
         simple_heading=True,
         resampling_time_range=(20.0, 20.0),
         debug_vis=True,
-        ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
+        ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-10.691331, -10.691330), pos_y=(-0.0, 0.0), heading=(-math.pi, math.pi)),
     )
+    #'''
+
+    '''
+    pose_command = mdp.UniformPoseCommandCfg(
+        asset_name="robot",
+        body_name="base",
+        resampling_time_range=(20.0, 20.0),
+        debug_vis=True,
+        ranges=mdp.UniformPoseCommandCfg.Ranges(
+            pos_x=(-10.691331, -10.691331),
+            pos_y=(-0.0, 0.0),
+            pos_z=(1.6467236, 1.6467236),
+            roll=(-0.0, 0.0), 
+            pitch=(-0.0, 0.0),      
+            yaw=(-0.0, 0.0), 
+        ),
+    )
+    #'''
 
 
 @configclass

@@ -27,3 +27,8 @@ def task_order(env: ManagerBasedRLEnv, env_ids, num_steps = 4200) -> torch.Tenso
         enable_base_collision(env)
         return 1   # Enable base contact termination for walking
     return 0
+
+# def reset_nodes()
+    
+
+# def command_nodes()
