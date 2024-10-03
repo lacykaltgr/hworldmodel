@@ -92,9 +92,17 @@ class NavigationSceneCfg(InteractiveSceneCfg):
 
     dome_light = AssetBaseCfg(
         prim_path="/World/Light1", 
-        spawn=sim_utils.DomeLightCfg(intensity=10000.0, color=(0.75, 0.75, 0.75)),
+        spawn=sim_utils.DomeLightCfg(intensity=6000.0, color=(0.75, 0.75, 0.75)),
         init_state = AssetBaseCfg.InitialStateCfg(
             pos=(-11.0, 0.0, 1.0)
+        )
+    )
+
+    dome_light = AssetBaseCfg(
+        prim_path="/World/Light2", 
+        spawn=sim_utils.DomeLightCfg(intensity=6000.0, color=(0.75, 0.75, 0.75)),
+        init_state = AssetBaseCfg.InitialStateCfg(
+            pos=(-12.0, 0.0, 1.0)
         )
     )
 
