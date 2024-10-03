@@ -104,7 +104,25 @@ class NavigationSceneCfg(InteractiveSceneCfg):
     )
 
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
-   
+
+    dome_light = AssetBaseCfg(
+        prim_path="/World/Light1", 
+        spawn=sim_utils.DomeLightCfg(intensity=6000.0, color=(0.75, 0.75, 0.75)),
+        init_state = AssetBaseCfg.InitialStateCfg(
+            pos=(-1.0, 0.0, 1.0)
+        )
+    )
+
+    dome_light = AssetBaseCfg(
+        prim_path="/World/Light2", 
+        spawn=sim_utils.DomeLightCfg(intensity=6000.0, color=(0.75, 0.75, 0.75)),
+        init_state = AssetBaseCfg.InitialStateCfg(
+            pos=(-5.0, 5.0, 1.0)
+        )
+    )
+    
+    
+    """
     camera = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/Camera",
         update_period=0.0,
@@ -116,6 +134,7 @@ class NavigationSceneCfg(InteractiveSceneCfg):
         ),
         offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.5), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
     )
+    """
 
 
 @configclass
@@ -124,7 +143,7 @@ class EventCfg:
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+            "pose_range": {"x": (0.5, 0.5), "y": (0.0, 0.0), "yaw": (3.14, 3.14)},
             "velocity_range": {
                 "x": (-0.0, 0.0),
                 "y": (-0.0, 0.0),
@@ -153,6 +172,8 @@ class ActionsCfg:
 class ObservationsCfg:
     """Observation specifications for the MDP."""
 
+    '''
+
     @configclass
     class DepthObsCfg(ObsGroup):
         """Observations for depth group."""
@@ -162,7 +183,9 @@ class ObservationsCfg:
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
+    '''
 
+    '''
     @configclass
     class VelocityObsCfg(ObsGroup):
         """Observations for policy group."""
@@ -174,7 +197,8 @@ class ObservationsCfg:
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
-
+    '''
+    '''
     @configclass
     class CommandObsCfg(ObsGroup):
         """Observations for policy group."""
@@ -184,9 +208,10 @@ class ObservationsCfg:
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
+    '''
 
     """Observation specifications for the MDP."""
-
+    '''
     @configclass
     class GravityCfg(ObsGroup):
         """Observations for projected gravity group."""
@@ -207,6 +232,29 @@ class ObservationsCfg:
     command = CommandObsCfg()
     gravity = GravityCfg()
     depth = DepthObsCfg()
+    '''
+
+    @configclass
+    class PositionCfg(ObsGroup):
+        """Observations for projected gravity group."""
+
+        
+        position = ObsTerm(
+            func=mdp.root_pos_w,
+            params={"asset_cfg": SceneEntityCfg("robot")},
+        )
+        orientation = ObsTerm(
+            func=mdp.root_quat_w,
+            params={"asset_cfg": SceneEntityCfg("robot")},
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    # observation groups
+    position = PositionCfg()
+
 
 
 @configclass
@@ -214,27 +262,27 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-400.0)
-    position_tracking = RewTerm(
-        func=position_command_error_tanh,
-        weight=0.5,
-        params={"std": 2.0, "command_name": "pose_command"},
-    )
-    position_tracking_fine_grained = RewTerm(
-        func=position_command_error_tanh,
-        weight=0.5,
-        params={"std": 0.2, "command_name": "pose_command"},
-    )
-    orientation_tracking = RewTerm(
-        func=heading_command_error_abs,
-        weight=-0.2,
-        params={"command_name": "pose_command"},
-    )
+    #position_tracking = RewTerm(
+    #    func=position_command_error_tanh,
+    #    weight=0.5,
+    #    params={"std": 2.0, "command_name": "pose_command"},
+    #)
+    #position_tracking_fine_grained = RewTerm(
+    #    func=position_command_error_tanh,
+    #    weight=0.5,
+    #    params={"std": 0.2, "command_name": "pose_command"},
+    #)
+    #orientation_tracking = RewTerm(
+    #    func=heading_command_error_abs,
+    #    weight=-0.2,
+    #    params={"command_name": "pose_command"},
+    #)
 
 
 @configclass
 class CommandsCfg:
     """Command specifications for the MDP."""
-
+    '''
     pose_command = mdp.UniformPose2dCommandCfg(
         asset_name="robot",
         simple_heading=True,
@@ -242,13 +290,14 @@ class CommandsCfg:
         debug_vis=True,
         ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-5.0, 5.0), pos_y=(-5.0, 5.0), heading=(-math.pi, math.pi)),
     )
+    '''
 
 
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
-    task_difficulty = CurrTerm(func=task_order)
-    pass
+    #task_difficulty = CurrTerm(func=task_order)
+    #pass
 
 
 
@@ -268,7 +317,7 @@ class NavigationEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Scene settings
-    scene: SceneEntityCfg = NavigationSceneCfg(num_envs=3, env_spacing=0.0)
+    scene: SceneEntityCfg = NavigationSceneCfg(num_envs=8, env_spacing=2.5)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -283,7 +332,7 @@ class NavigationEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = LOW_LEVEL_ENV_CFG.decimation * 10
-        self.episode_length_s = self.commands.pose_command.resampling_time_range[1]
+        self.episode_length_s = 200 #self.commands.pose_command.resampling_time_range[1]
         # simulation settings
         self.sim.dt = LOW_LEVEL_ENV_CFG.sim.dt
         self.sim.render_interval = LOW_LEVEL_ENV_CFG.decimation
@@ -325,7 +374,7 @@ class NavigationEnvCfg_GRAPH(NavigationEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = LOW_LEVEL_ENV_CFG.decimation * 10
-        self.episode_length_s = self.commands.pose_command.resampling_time_range[1]
+        self.episode_length_s = 200 # self.commands.pose_command.resampling_time_range[1]
         # simulation settings
         self.sim.dt = LOW_LEVEL_ENV_CFG.sim.dt
         self.sim.render_interval = LOW_LEVEL_ENV_CFG.decimation

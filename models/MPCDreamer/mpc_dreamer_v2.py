@@ -144,7 +144,7 @@ class MPCDreamerV2:
             # this would use the reward as both reward and value
             # value_estimator = self.make_value_estimator(value_net=value_model)
             
-            value_estimator = 
+            value_estimator = None
         return value_model, value_estimator
 
 

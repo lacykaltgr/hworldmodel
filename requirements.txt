@@ -1,4 +1,4 @@
-torchrl
+torchrl==0.4.0
 hydra-core
 tqdm
 wandb

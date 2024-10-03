@@ -22,7 +22,7 @@ def task_order(env: ManagerBasedRLEnv, env_ids, num_steps = 25000) -> torch.Tens
     Curriculum logic to switch between standing and walking tasks by altering termination conditions.
     """
     # Check the current curriculum stage
-    wandb.log({"common_step_counter": int(env.common_step_counter)})
+    # wandb.log({"common_step_counter": int(env.common_step_counter)})
     if int(env.common_step_counter) >= num_steps and int(env.common_step_counter) <= num_steps + 420:
         enable_base_collision(env)
         return 1   # Enable base contact termination for walking

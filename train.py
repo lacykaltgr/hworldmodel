@@ -68,6 +68,16 @@ def main(cfg: "DictConfig"):  # noqa: F821
         test_env=test_env if not is_isaaclab_env else train_env,
     )
 
+    # save policy
+    policy_save_dir = "/workspace/policy"
+    os.makedirs(policy_save_dir, exist_ok=True)
+    torch.save(policy.state_dict(), os.path.join(policy_save_dir, "policy.pth"))
+    # save config
+    from omegaconf import OmegaConf
+    config_path = os.path.join(policy_save_dir, "config.yaml")
+    with open(config_path, "w") as f:
+        OmegaConf.save(cfg, f)
+
     # Make collector
     collector = make_collector(cfg, train_env, policy)
 

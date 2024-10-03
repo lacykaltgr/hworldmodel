@@ -41,9 +41,9 @@ from isaac.assets.camera_observationterm import camera_depth
 from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
-from assets.curriculum import task_order
+from ..assets.curriculum import task_order
 
-from assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs, height_scan
+from ..assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs, height_scan
 
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
 

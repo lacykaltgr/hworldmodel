@@ -37,7 +37,7 @@ from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
 
-from assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs
+from ..assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs
 
 
 @configclass
