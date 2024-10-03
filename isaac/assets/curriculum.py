@@ -56,7 +56,7 @@ def node_based_termiantions(env: ManagerBasedRLEnv, env_ids: Sequence[int], thre
     global done_count
     global reset_flags
 
-    start_goal_pairs = 4
+    start_goal_pairs = 100
 
     # Check if any environment has reset in this step
     if env.termination_manager.dones.any():
