@@ -41,7 +41,8 @@ from isaac.assets.camera_observationterm import camera_depth
 from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
-from assets.curriculum import task_order
+from assets.curriculum import task_order, node_based_termiantions
+from assets.commands import UniformPose2dCommandCfg
 
 from dataclasses import MISSING
 
@@ -50,7 +51,6 @@ from assets.navigation import generated_commands, position_command_error_tanh, h
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
 
 LOW_LEVEL_ENV_CFG = AnymalCFlatEnvCfg()
-
 
 @configclass
 class NavigationSceneCfg(InteractiveSceneCfg):
@@ -90,6 +90,14 @@ class NavigationSceneCfg(InteractiveSceneCfg):
         offset=CameraCfg.OffsetCfg(pos=(-10.0, -1.0, 0.5), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
     )
 
+    dome_light = AssetBaseCfg(
+        prim_path="/World/Light1", 
+        spawn=sim_utils.DomeLightCfg(intensity=10000.0, color=(0.75, 0.75, 0.75)),
+        init_state = AssetBaseCfg.InitialStateCfg(
+            pos=(-11.0, 0.0, 1.0)
+        )
+    )
+
 
 @configclass
 class EventCfg:
@@ -97,7 +105,7 @@ class EventCfg:
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "pose_range": {"x": (-10.8044, -10.8044), "y": (-3.4775763, -3.4775763), "yaw": (1.3115901, 1.3115901)},
+            "pose_range": {"x": (-0.0, 0.0), "y": (-0.0, 0.0), "yaw": (-3.14, 3.14)},
             "velocity_range": {
                 "x": (-0.0, -0.0),
                 "y": (-0.0, 0.0),
@@ -209,15 +217,15 @@ class CommandsCfg:
     """Command specifications for the MDP."""
 
     #'''
-    pose_command = mdp.UniformPose2dCommandCfg(
+    pose_command = UniformPose2dCommandCfg(
         asset_name="robot",
         simple_heading=True,
         resampling_time_range=(20.0, 20.0),
         debug_vis=True,
-        ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-10.691331, -10.691330), pos_y=(-0.0, 0.0), heading=(-math.pi, math.pi)),
+        ranges=UniformPose2dCommandCfg.Ranges(pos_x=(-0.3, 0.3), pos_y=(6.7, 7.3), heading=(-math.pi, math.pi)),
     )
     #'''
-
+    
     '''
     pose_command = mdp.UniformPoseCommandCfg(
         asset_name="robot",
@@ -240,6 +248,7 @@ class CommandsCfg:
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
     task_difficulty = CurrTerm(func=task_order)
+    node_resets = CurrTerm(func=node_based_termiantions)
     pass
 
 
@@ -260,7 +269,7 @@ class NavigationEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Scene settings
-    scene: SceneEntityCfg = NavigationSceneCfg(num_envs=4, env_spacing=1.5)
+    scene: SceneEntityCfg = NavigationSceneCfg(num_envs=4, env_spacing=0.0)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
