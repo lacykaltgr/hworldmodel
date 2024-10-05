@@ -157,6 +157,7 @@ class DreamerModelLoss(LossModule):
             self.kl_balance * kl_prior + (1 - self.kl_balance) * kl_post
         ).unsqueeze(-1)
         
+        '''
         depth_reco_loss = 0.5 * distance_loss(
             tensordict.get(("next", "depth")),
             tensordict.get(("next", "reco_depth")),
@@ -165,6 +166,7 @@ class DreamerModelLoss(LossModule):
         if not self.global_average:
             depth_reco_loss = depth_reco_loss.sum((-3, -2, -1))
         reco_loss = depth_reco_loss.mean().unsqueeze(-1)
+        '''
         
         velocity_reco_loss = 0.5 * distance_loss(
             tensordict.get(("next", "velocity")),
@@ -223,7 +225,7 @@ class DreamerModelLoss(LossModule):
             TensorDict(
                 {
                     "loss_model_kl": self.lambda_kl * kl_loss,
-                    "loss_model_reco": self.lambda_reco * reco_loss,
+                    # "loss_model_reco": self.lambda_reco * reco_loss,
                     "loss_model_reward": self.lambda_reward * reward_loss,
                     "loss_model_velocity": velocity_reco_loss,
                     "loss_model_command": command_reco_loss,

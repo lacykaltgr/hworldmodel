@@ -78,6 +78,7 @@ class NavigationSceneCfg(InteractiveSceneCfg):
 
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
    
+    '''
     camera = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/Camera",
         update_period=0.0,
@@ -87,8 +88,9 @@ class NavigationSceneCfg(InteractiveSceneCfg):
         spawn=PinholeCameraCfg(
             focal_length=7, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.01, 10)
         ),
-        offset=CameraCfg.OffsetCfg(pos=(-10.0, -1.0, 0.5), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
+        offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.5), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
     )
+    '''
 
     dome_light = AssetBaseCfg(
         prim_path="/World/Light1", 

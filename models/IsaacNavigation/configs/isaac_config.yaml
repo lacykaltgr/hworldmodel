@@ -43,14 +43,14 @@ networks:
     _target_: hworldmodel.utils._default_device
     device: null
   state_dim: 32
-  state_vars: 64
-  rssm_hidden_dim: 1024
+  state_vars: 32
+  rssm_hidden_dim: 512
   hidden_dim: 256
   activation: "elu"
 
 
 replay_buffer: 
-  batch_size: 5000
+  batch_size: 7000
   buffer_size: 1000000
   batch_length: 50
   scratch_dir: null
@@ -64,7 +64,7 @@ logger:
   # eval interval, in collection counts
   eval_iter: 5
   eval_rollout_steps: 500
-  video: True
+  video: False
   enable_profiler: False
 
 

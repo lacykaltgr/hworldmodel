@@ -70,13 +70,18 @@ def node_based_termiantions(env: ManagerBasedRLEnv, env_ids: Sequence[int], thre
         if all(reset_flags):
             # Increment done_count since all environments have reset
             done_count += 1
-            mean_distance = 0
+            distance_to_goal = traveled_distance = total_distance = 0
             pose_command = env.command_manager.get_term("pose_command")
             agent_pos = pose_command.robot.data.root_pos_w 
+            reset_pos = pose_command.robot.data.default_root_state
             goal_pos = pose_command.pos_command_w
             for i in range(len(reset_flags)):
-                mean_distance += math.hypot(agent_pos[i, 0] - goal_pos[i, 0], agent_pos[i, 1] - goal_pos[i, 1])
-            wandb.log({"mean_distance_from_goal": mean_distance / len(reset_flags)})
+                distance_to_goal += math.hypot(agent_pos[i, 0] - goal_pos[i, 0], agent_pos[i, 1] - goal_pos[i, 1])
+                traveled_distance += math.hypot(reset_pos[i, 0] - agent_pos[i, 0], reset_pos[i, 1] - agent_pos[i, 1])
+                total_distance += math.hypot(reset_pos[i, 0] - goal_pos[i, 0], reset_pos[i, 1] - goal_pos[i, 1])
+            wandb.log({"mean_distance_from_goal": distance_to_goal / len(reset_flags)})
+            wandb.log({"traveled_distance": traveled_distance / len(reset_flags)})
+            wandb.log({"total_distance": total_distance / len(reset_flags)})
 
             # Reset the reset_flags for the next round of tracking
             reset_flags = [False] * len(reset_flags)

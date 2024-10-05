@@ -163,7 +163,7 @@ def transform_isaac_env(cfg, env, logger=None):
         image_size = cfg.env.image_size
         env.append_transform(Resize(image_size, image_size))
     else:
-
+        '''
         env.append_transform(
             Resize(cfg.env.image_size, cfg.env.image_size, in_keys=["depth"], out_keys=["depth"])
         )
@@ -173,6 +173,8 @@ def transform_isaac_env(cfg, env, logger=None):
         env.append_transform(
             ClipTransform(low=0, high=1, in_keys=["depth"], out_keys=["depth"])
         )
+        #'''
+        print("Not using depth transform")
 
     env.append_transform(DoubleToFloat())
     env.append_transform(RewardSum())
