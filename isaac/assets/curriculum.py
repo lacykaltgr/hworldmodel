@@ -22,7 +22,7 @@ def enable_base_collision(env: ManagerBasedRLEnv) -> torch.Tensor:
     term_name = "base_contact"
     base_contact = DoneTerm(func=mdp.illegal_contact, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 700.0},)
     env.termination_manager.set_term_cfg("base_contact", base_contact)
-    print("itt voltam")
+    #print("itt voltam")
 
 
 def task_order(env: ManagerBasedRLEnv, env_ids, num_steps = 500) -> torch.Tensor:
@@ -82,6 +82,8 @@ def node_based_termiantions(env: ManagerBasedRLEnv, env_ids: Sequence[int], thre
             wandb.log({"mean_distance_from_goal": distance_to_goal / len(reset_flags)})
             wandb.log({"traveled_distance": traveled_distance / len(reset_flags)})
             wandb.log({"total_distance": total_distance / len(reset_flags)})
+            wandb.log({"distance_shortened": (total_distance - distance_to_goal) / len(reset_flags)})
+
 
             # Reset the reset_flags for the next round of tracking
             reset_flags = [False] * len(reset_flags)
