@@ -11,7 +11,7 @@ import open3d as o3d
 import numpy as np
 import math
 
-num_envs = 4
+num_envs = 2
 reset_flags = [False] * num_envs
 done_count = 0
   

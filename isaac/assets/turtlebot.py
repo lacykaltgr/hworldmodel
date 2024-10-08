@@ -6,7 +6,7 @@ from omni.isaac.lab.sim.schemas import JointDrivePropertiesCfg
 from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR
 from omni.isaac.lab.sensors import RayCasterCfg
 from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR
-from .velodyne import VELODYNE_VLP_16_RAYCASTER_CFG
+from omni.isaac.lab_assets.velodyne import VELODYNE_VLP_16_RAYCASTER_CFG
 
 
 ##

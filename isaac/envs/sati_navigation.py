@@ -33,7 +33,7 @@ from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
-from omni.isaac.lab.sensors import ContactSensorCfg, RayCasterCfg, patterns
+from omni.isaac.lab.sensors import ContactSensorCfg, RayCasterCfg, patterns 
 from omni.isaac.lab.terrains import TerrainImporterCfg
 
 from isaac.assets.turtlebot import SATIDOG_CFG
@@ -67,18 +67,29 @@ class NavigationSceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = SATIDOG_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     # sensors
+    #LIDAR
     height_scanner = RayCasterCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base",
-        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
+        pattern_cfg=patterns.LidarPatternCfg(channels=16, vertical_fov_range = [-30.0, 30.0], horizontal_fov_range = [-180.0, 180.0], horizontal_res = 0.2),
         debug_vis=False,
         mesh_prim_paths=["/World/office"],
     )
+    # GRID 
+    '''
+    height_scanner = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
+        attach_yaw_only=True,
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[4.6, 4.0]),
+        debug_vis=False,
+        mesh_prim_paths=["/World/office"],
+    )
+    '''
 
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
    
-    '''
     camera = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/Camera",
         update_period=0.0,
@@ -90,11 +101,10 @@ class NavigationSceneCfg(InteractiveSceneCfg):
         ),
         offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.5), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
     )
-    '''
 
     dome_light = AssetBaseCfg(
         prim_path="/World/Light1", 
-        spawn=sim_utils.DomeLightCfg(intensity=6000.0, color=(0.75, 0.75, 0.75)),
+        spawn=sim_utils.DomeLightCfg(intensity=8000.0, color=(0.75, 0.75, 0.75)),
         init_state = AssetBaseCfg.InitialStateCfg(
             pos=(-11.0, 0.0, 1.0)
         )
@@ -102,7 +112,7 @@ class NavigationSceneCfg(InteractiveSceneCfg):
 
     dome_light = AssetBaseCfg(
         prim_path="/World/Light2", 
-        spawn=sim_utils.DomeLightCfg(intensity=6000.0, color=(0.75, 0.75, 0.75)),
+        spawn=sim_utils.DomeLightCfg(intensity=8000.0, color=(0.75, 0.75, 0.75)),
         init_state = AssetBaseCfg.InitialStateCfg(
             pos=(-12.0, 0.0, 1.0)
         )
@@ -279,7 +289,7 @@ class NavigationEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Scene settings
-    scene: SceneEntityCfg = NavigationSceneCfg(num_envs=4, env_spacing=0.0)
+    scene: SceneEntityCfg = NavigationSceneCfg(num_envs=2, env_spacing=0.0)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
