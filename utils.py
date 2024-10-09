@@ -285,7 +285,7 @@ def get_activation(name):
 def _default_device(device=None):
     if device in ("", None):
         if torch.cuda.is_available():
-            return torch.device("cuda:0")
+            return torch.device("cuda:1")
         return torch.device("cpu")
     return torch.device(device)
 

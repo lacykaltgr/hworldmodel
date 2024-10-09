@@ -44,9 +44,9 @@ from omni.isaac.lab.managers import SceneEntityCfg
 from assets.curriculum import task_order, node_based_termiantions
 from assets.commands import UniformPose2dCommandCfg
 
-from dataclasses import MISSING
 
-from assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs, height_scan
+from ..assets.curriculum import task_order
+from ..assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs, height_scan
 
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
 
@@ -62,7 +62,36 @@ class NavigationSceneCfg(InteractiveSceneCfg):
             usd_path=f"http://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/4.0/Isaac/Environments/Office/office.usd",
         )  
     )
-    #'''
+    '''
+    # lights for outdoor environments
+    sky_light = AssetBaseCfg(
+        prim_path="/World/skyLight",
+        spawn=sim_utils.DomeLightCfg(
+            intensity=750.0,
+            texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",
+        ),
+    )
+
+    terrain = TerrainImporterCfg(
+        prim_path="/World/ground",
+        terrain_type="generator",
+        terrain_generator=ROUGH_TERRAINS_CFG,
+        max_init_terrain_level=5,
+        collision_group=-1,
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            friction_combine_mode="multiply",
+            restitution_combine_mode="multiply",
+            static_friction=1.0,
+            dynamic_friction=1.0,
+        ),
+        visual_material=sim_utils.MdlFileCfg(
+            mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
+            project_uvw=True,
+            texture_scale=(0.25, 0.25),
+        ),
+        debug_vis=False,
+    )
+    '''
 
     robot: ArticulationCfg = SATIDOG_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
@@ -243,6 +272,7 @@ class CommandsCfg:
         resampling_time_range=(20.0, 20.0),
         debug_vis=True,
         ranges=UniformPose2dCommandCfg.Ranges(pos_x=(-0.3, 0.3), pos_y=(6.7, 7.3), heading=(-math.pi, math.pi)),
+
     )
     #'''
     

@@ -57,6 +57,7 @@ replay_buffer:
 
 logger:
   model_name: IsaacNavigation
+  package_path: /hworldmodel/models
   backend: wandb
   project: isaac_cimbi
   exp_name: ${env.name}-${env.task}-${env.seed}
