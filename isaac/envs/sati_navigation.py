@@ -33,7 +33,7 @@ from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
-from omni.isaac.lab.sensors import ContactSensorCfg, RayCasterCfg, patterns
+from omni.isaac.lab.sensors import ContactSensorCfg, RayCasterCfg, patterns 
 from omni.isaac.lab.terrains import TerrainImporterCfg
 
 from isaac.assets.turtlebot import SATIDOG_CFG
@@ -41,6 +41,9 @@ from isaac.assets.camera_observationterm import camera_depth
 from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
+from assets.curriculum import task_order, node_based_termiantions
+from assets.commands import UniformPose2dCommandCfg
+
 
 from ..assets.curriculum import task_order
 from ..assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs, height_scan
@@ -48,7 +51,6 @@ from ..assets.navigation import generated_commands, position_command_error_tanh,
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
 
 LOW_LEVEL_ENV_CFG = AnymalCFlatEnvCfg()
-
 
 @configclass
 class NavigationSceneCfg(InteractiveSceneCfg):
@@ -94,14 +96,26 @@ class NavigationSceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = SATIDOG_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     # sensors
+    #LIDAR
     height_scanner = RayCasterCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base",
-        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
+        pattern_cfg=patterns.LidarPatternCfg(channels=16, vertical_fov_range = [-30.0, 30.0], horizontal_fov_range = [-180.0, 180.0], horizontal_res = 0.2),
         debug_vis=False,
         mesh_prim_paths=["/World/office"],
     )
+    # GRID 
+    '''
+    height_scanner = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
+        attach_yaw_only=True,
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[4.6, 4.0]),
+        debug_vis=False,
+        mesh_prim_paths=["/World/office"],
+    )
+    '''
 
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
    
@@ -117,6 +131,22 @@ class NavigationSceneCfg(InteractiveSceneCfg):
         offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.5), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
     )
 
+    dome_light = AssetBaseCfg(
+        prim_path="/World/Light1", 
+        spawn=sim_utils.DomeLightCfg(intensity=8000.0, color=(0.75, 0.75, 0.75)),
+        init_state = AssetBaseCfg.InitialStateCfg(
+            pos=(-11.0, 0.0, 1.0)
+        )
+    )
+
+    dome_light = AssetBaseCfg(
+        prim_path="/World/Light2", 
+        spawn=sim_utils.DomeLightCfg(intensity=8000.0, color=(0.75, 0.75, 0.75)),
+        init_state = AssetBaseCfg.InitialStateCfg(
+            pos=(-12.0, 0.0, 1.0)
+        )
+    )
+
 
 @configclass
 class EventCfg:
@@ -124,9 +154,9 @@ class EventCfg:
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+            "pose_range": {"x": (-0.0, 0.0), "y": (-0.0, 0.0), "yaw": (-3.14, 3.14)},
             "velocity_range": {
-                "x": (-0.0, 0.0),
+                "x": (-0.0, -0.0),
                 "y": (-0.0, 0.0),
                 "z": (-0.0, 0.0),
                 "roll": (-0.0, 0.0),
@@ -235,19 +265,40 @@ class RewardsCfg:
 class CommandsCfg:
     """Command specifications for the MDP."""
 
-    pose_command = mdp.UniformPose2dCommandCfg(
+    #'''
+    pose_command = UniformPose2dCommandCfg(
         asset_name="robot",
         simple_heading=True,
         resampling_time_range=(20.0, 20.0),
         debug_vis=True,
-        ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-5.0, 5.0), pos_y=(-5.0, 5.0), heading=(-math.pi, math.pi)),
+        ranges=UniformPose2dCommandCfg.Ranges(pos_x=(-0.3, 0.3), pos_y=(6.7, 7.3), heading=(-math.pi, math.pi)),
+
     )
+    #'''
+    
+    '''
+    pose_command = mdp.UniformPoseCommandCfg(
+        asset_name="robot",
+        body_name="base",
+        resampling_time_range=(20.0, 20.0),
+        debug_vis=True,
+        ranges=mdp.UniformPoseCommandCfg.Ranges(
+            pos_x=(-10.691331, -10.691331),
+            pos_y=(-0.0, 0.0),
+            pos_z=(1.6467236, 1.6467236),
+            roll=(-0.0, 0.0), 
+            pitch=(-0.0, 0.0),      
+            yaw=(-0.0, 0.0), 
+        ),
+    )
+    #'''
 
 
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
     task_difficulty = CurrTerm(func=task_order)
+    node_resets = CurrTerm(func=node_based_termiantions)
     pass
 
 
@@ -268,7 +319,7 @@ class NavigationEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Scene settings
-    scene: SceneEntityCfg = NavigationSceneCfg(num_envs=3, env_spacing=0.0)
+    scene: SceneEntityCfg = NavigationSceneCfg(num_envs=2, env_spacing=0.0)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()

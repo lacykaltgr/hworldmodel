@@ -44,7 +44,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
             logger_type=cfg.logger.backend,
             logger_name=f"{cfg.logger.model_name.lower()}_logging",
             experiment_name=exp_name,
-            wandb_kwargs={"mode": cfg.logger.mode, "name":"isaac_cimbi"},  # "config": cfg},
+            wandb_kwargs={"mode": cfg.logger.mode},  # "config": cfg},
         )
 
     is_isaaclab_env = is_isaac_env(cfg)

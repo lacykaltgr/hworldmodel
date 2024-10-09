@@ -66,8 +66,8 @@ class DreamerV2:
         rssm_dim = config.networks.rssm_hidden_dim
         
         return nn.ModuleDict(modules = dict(
-                depth_encoder = ObsEncoder(),
-                depth_decoder = DepthDecoder(),
+                # depth_encoder = ObsEncoder(),
+                # depth_decoder = DepthDecoder(),
                 velocity_encoder = MLP(out_features=16, depth=1, num_cells=64, activation_class=activation),
                 veolcity_decoder = MLP(out_features=6, depth=1, num_cells=64, activation_class=activation),
                 command_encoder = MLP(out_features=16, depth=1, num_cells=64, activation_class=activation),
@@ -75,7 +75,7 @@ class DreamerV2:
                 gravity_encoder = MLP(out_features=16, depth=1, num_cells=64, activation_class=activation),
                 gravity_decoder = MLP(out_features=3, depth=1, num_cells=64, activation_class=activation),
 
-                joint_encoder = MLP(out_features=1024, depth=3, num_cells=1280, activation_class=activation),
+                joint_encoder = MLP(out_features=512, depth=2, num_cells=512, activation_class=activation),
                 
                 rssm_prior = RSSMPriorV2(hidden_dim=rssm_dim, rnn_hidden_dim=rssm_dim, state_vars=state_vars, state_classes=state_classes, action_spec=action_spec),
                 rssm_posterior = RSSMPosteriorV2(hidden_dim=rssm_dim, state_vars=state_vars, state_classes=state_classes),
@@ -179,11 +179,11 @@ class DreamerV2:
         # Out actor differs from the original paper where first they compute prior and posterior and then act on it
         # but we found that this approach worked better.
         actor_realworld = SafeSequential(
-            SafeModule(
-                self.networks["depth_encoder"],
-                in_keys=["depth"],
-                out_keys=["encoded_depth"],
-            ),
+            # SafeModule(
+            #    self.networks["depth_encoder"],
+            #    in_keys=["depth"],
+            #    out_keys=["encoded_depth"],
+            # ),
             SafeModule(
                 self.networks["velocity_encoder"],
                 in_keys=["velocity"],
@@ -218,7 +218,7 @@ class DreamerV2:
             
             SafeModule(
                 self.networks["joint_encoder"],
-                in_keys=["encoded_depth", "encoded_velocity", "encoded_command", "encoded_gravity"], # , "encoded_joints", "encoded_actions", "encoded_height"
+                in_keys=["encoded_velocity", "encoded_command", "encoded_gravity"], # "encoded_depth", , "encoded_joints", "encoded_actions", "encoded_height"
                 out_keys=["encoded_latents"],
             ),  
             
@@ -268,6 +268,7 @@ class DreamerV2:
     
     def _dreamer_make_mbenv(self, test_env, use_decoder_in_env: bool = True, state_dim: int = 30, rssm_hidden_dim: int = 200, device: str = "cuda"):
         
+        '''
         # MB environment
         if use_decoder_in_env:
             mb_env_obs_decoder = SafeModule(
@@ -276,7 +277,9 @@ class DreamerV2:
                 out_keys=["reco_depth"],
             )
         else:
-            mb_env_obs_decoder = None
+        '''
+        mb_env_obs_decoder = None
+        
 
         transition_model = SafeSequential(
             SafeModule(
@@ -325,11 +328,11 @@ class DreamerV2:
     
     
         encoder = SafeSequential(                       
-            SafeModule(
-                self.networks["depth_encoder"],
-                in_keys=[("next", "depth")],
-                out_keys=[("next", "encoded_depth")],
-            ),
+            # SafeModule(
+            #    self.networks["depth_encoder"],
+            #    in_keys=[("next", "depth")],
+            #    out_keys=[("next", "encoded_depth")],
+            # ),
             SafeModule(
                 self.networks["velocity_encoder"],
                 in_keys=[("next", "velocity")],
@@ -364,18 +367,18 @@ class DreamerV2:
 
             SafeModule(
                 self.networks["joint_encoder"],
-                in_keys=[("next", "encoded_depth"), ("next", "encoded_velocity"), ("next", "encoded_command"), ("next", "encoded_gravity")],
-                # , ("next", "encoded_joints"), ("next", "encoded_actions"), ("next", "encoded_height")
+                in_keys=[("next", "encoded_velocity"), ("next", "encoded_command"), ("next", "encoded_gravity")],
+                # ("next", "encoded_depth"), , ("next", "encoded_joints"), ("next", "encoded_actions"), ("next", "encoded_height")
                 out_keys=[("next", "encoded_latents")],
             ),
         )
         
         decoder = SafeSequential(
-            SafeModule(
-                self.networks["depth_decoder"],
-                in_keys=[("next", "state"), ("next", "belief")],
-                out_keys=[("next", "reco_depth")],
-            ),
+            # SafeModule(
+            #    self.networks["depth_decoder"],
+            #    in_keys=[("next", "state"), ("next", "belief")],
+            #    out_keys=[("next", "reco_depth")],
+            # ),
             SafeModule(
                 self.networks["veolcity_decoder"],
                 in_keys=[("next", "state"), ("next", "belief")],

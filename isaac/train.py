@@ -10,7 +10,7 @@ from omni.isaac.lab.app import AppLauncher
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent.")
 
-parser.add_argument("--num_envs", type=int, default=3, help="Number of environments to simulate.")
+parser.add_argument("--num_envs", type=int, default=2, help="Number of environments to simulate.")
 parser.add_argument("--task", type=str, default="Sati-Navigation-v0", help="Name of the task.")
 parser.add_argument("--seed", type=int, default=420, help="Seed used for the environment")
 parser.add_argument("--max_iterations", type=int, default=10e6, help="RL Policy training iterations.")
