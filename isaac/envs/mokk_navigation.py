@@ -50,46 +50,25 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_c.flat
 LOW_LEVEL_ENV_CFG = AnymalCFlatEnvCfg()
 
 
+def light(x, y, z, n):
+    return AssetBaseCfg(
+        prim_path=f"/World/light{n}", 
+        spawn=sim_utils.DomeLightCfg(intensity=3500.0, color=(0.85, 0.75, 0.6)),
+        init_state = AssetBaseCfg.InitialStateCfg(
+            pos=(x, y, z)
+        )
+    )
+
+
 @configclass
 class NavigationSceneCfg(InteractiveSceneCfg):
 
-    #'''
     room = AssetBaseCfg(
         prim_path="/World/office", 
         spawn=sim_utils.UsdFileCfg(
             usd_path=f"http://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/4.0/Isaac/Environments/Office/office.usd",
         )  
     )
-    '''
-    # lights for outdoor environments
-    sky_light = AssetBaseCfg(
-        prim_path="/World/skyLight",
-        spawn=sim_utils.DomeLightCfg(
-            intensity=750.0,
-            texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",
-        ),
-    )
-
-    terrain = TerrainImporterCfg(
-        prim_path="/World/ground",
-        terrain_type="generator",
-        terrain_generator=ROUGH_TERRAINS_CFG,
-        max_init_terrain_level=5,
-        collision_group=-1,
-        physics_material=sim_utils.RigidBodyMaterialCfg(
-            friction_combine_mode="multiply",
-            restitution_combine_mode="multiply",
-            static_friction=1.0,
-            dynamic_friction=1.0,
-        ),
-        visual_material=sim_utils.MdlFileCfg(
-            mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
-            project_uvw=True,
-            texture_scale=(0.25, 0.25),
-        ),
-        debug_vis=False,
-    )
-    '''
 
     robot: ArticulationCfg = SATIDOG_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
@@ -105,36 +84,43 @@ class NavigationSceneCfg(InteractiveSceneCfg):
 
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
 
-    dome_light = AssetBaseCfg(
-        prim_path="/World/Light1", 
-        spawn=sim_utils.DomeLightCfg(intensity=6000.0, color=(0.75, 0.75, 0.75)),
-        init_state = AssetBaseCfg.InitialStateCfg(
-            pos=(-1.0, 0.0, 1.0)
-        )
-    )
-
-    dome_light = AssetBaseCfg(
-        prim_path="/World/Light2", 
-        spawn=sim_utils.DomeLightCfg(intensity=6000.0, color=(0.75, 0.75, 0.75)),
-        init_state = AssetBaseCfg.InitialStateCfg(
-            pos=(-5.0, 5.0, 1.0)
-        )
-    )
-    
-    
     """
+    lampak:
+    - recepcio
+        - (0        0        3.1)
+        - (-11.7    0        2.7)
+        - (-5.6     -8.7     3.1)
+        - (-6.7     8.2      2.9)
+        - (-12.2    -9.7     3.1)
+
+    - jobb elol
+        - (-3.1     19.7    2.1)
+        - (-0.2     28.4    2.7)
+
+    - jobb hátul
+    """
+
+
+    r_light1 = light(0, 0, 3.1, 1)
+    r_light2 = light(-11.7, 0, 2.7, 2)
+    r_light3 = light(-5.6, -8.7, 3.1, 3)
+    r_light4 = light(-6.7, 8.2, 2.9, 4)
+    r_light5 = light(-12.2, -9.7, 3.1, 5)
+    je_light1 = light(-3.1, 19.7, 2.1, 6)
+    je_light2 = light(-0.2, 28.4, 2.7, 7)
+    
+    
     camera = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/Camera",
         update_period=0.0,
         height=240,
         width=320,
-        data_types=["distance_to_image_plane"],
+        data_types=["rgb"],
         spawn=PinholeCameraCfg(
-            focal_length=7, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.01, 10)
+            focal_length=7, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.01, 100)
         ),
-        offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.5), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
+        offset=CameraCfg.OffsetCfg(pos=(-1, 0.0, 1), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
     )
-    """
 
 
 @configclass
