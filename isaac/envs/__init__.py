@@ -3,6 +3,7 @@ from .env_cfg import TurtlebotEnvCfg
 from.navigation import NavigationEnvCfg
 from .sati_walking import WalkingSceneCfg as sati_walking
 from .sati_navigation import NavigationEnvCfg as sati_navigate
+from .mokk_navigation import NavigationEnvCfg as mokk_navigate
 
 gym.register(
     id="Turtlebot-AccCollision-v0",
@@ -37,5 +38,14 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": sati_navigate,
+    },
+)
+
+gym.register(
+    id="Mokk-Navigation-v0",
+    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": mokk_navigate,
     },
 )
