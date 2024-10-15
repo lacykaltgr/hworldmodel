@@ -1,2 +1,15 @@
 outputs
 */__pycache__/*
+
+# Ignore python cache files
+**/__pycache__/*
+__pycache__/*
+*.pyc
+*.pyo
+*.cpython-*
+*.pyc
+
+# Ignore python build files (.eggs, .egg-info, dist)
+**/*.egg
+**/*.egg-info
+**/dist
