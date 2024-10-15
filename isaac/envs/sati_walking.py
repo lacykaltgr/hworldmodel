@@ -16,9 +16,7 @@ from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
-
 import omni.isaac.lab_tasks.manager_based.navigation.mdp as mdp_navigation
-
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg
@@ -32,20 +30,18 @@ from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
-from isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
 from omni.isaac.lab.sensors import ContactSensorCfg, RayCasterCfg, patterns
 from omni.isaac.lab.terrains import TerrainImporterCfg
-
-from isaac.assets.turtlebot import SATIDOG_CFG
-from isaac.assets.camera_observationterm import camera_depth
 from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
+from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
 
+from ..isaac.assets.turtlebot import SATIDOG_CFG
+from ..isaac.assets.camera_observationterm import camera_depth
+from ..isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
 from ..assets.curriculum import task_order
 from ..assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs, height_scan
-
-from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
 
 
 LOW_LEVEL_ENV_CFG = AnymalCFlatEnvCfg()

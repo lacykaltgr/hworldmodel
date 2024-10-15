@@ -14,13 +14,13 @@ from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
-from isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
-
-from isaac.assets.turtlebot import TURTLEBOT4_CFG
-from isaac.assets.camera_observationterm import camera_depth
 from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
+
+from ..isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
+from ..isaac.assets.turtlebot import TURTLEBOT4_CFG
+from ..isaac.assets.camera_observationterm import camera_depth
 
 
 

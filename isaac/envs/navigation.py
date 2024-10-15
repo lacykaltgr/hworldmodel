@@ -14,9 +14,7 @@ from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR
-
 import omni.isaac.lab_tasks.manager_based.navigation.mdp as mdp_navigation
-
 import omni.isaac.lab.envs.mdp as mdp
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg
@@ -29,14 +27,13 @@ from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
-from isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
-
-from isaac.assets.turtlebot import NOVABOT_CFG
-from isaac.assets.camera_observationterm import camera_depth
 from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
 
+from ..isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
+from ..isaac.assets.turtlebot import NOVABOT_CFG
+from ..isaac.assets.camera_observationterm import camera_depth
 from ..assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs
 
 
