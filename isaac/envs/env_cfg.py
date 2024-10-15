@@ -18,9 +18,9 @@ from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
 
-from ..isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
-from ..isaac.assets.turtlebot import TURTLEBOT4_CFG
-from ..isaac.assets.camera_observationterm import camera_depth
+from ..assets.wheeled_actionterm import WheeledRobotActionTermCfg
+from ..assets.turtlebot import TURTLEBOT4_CFG
+from ..assets.camera_observationterm import camera_depth
 
 
 

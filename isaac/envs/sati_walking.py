@@ -37,9 +37,9 @@ from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
 
-from ..isaac.assets.turtlebot import SATIDOG_CFG
-from ..isaac.assets.camera_observationterm import camera_depth
-from ..isaac.assets.wheeled_actionterm import WheeledRobotActionTermCfg
+from ..assets.turtlebot import SATIDOG_CFG
+from ..assets.camera_observationterm import camera_depth
+from ..assets.wheeled_actionterm import WheeledRobotActionTermCfg
 from ..assets.curriculum import task_order
 from ..assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs, height_scan
 

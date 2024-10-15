@@ -38,8 +38,8 @@ from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
 
 
-from ..isaac.assets.turtlebot import SATIDOG_CFG
-from ..isaac.assets.camera_observationterm import camera_depth
+from ..assets.turtlebot import SATIDOG_CFG
+from ..assets.camera_observationterm import camera_depth
 from ..assets.curriculum import task_order, node_based_termiantions
 from ..assets.commands import UniformPose2dCommandCfg
 from ..assets.curriculum import task_order

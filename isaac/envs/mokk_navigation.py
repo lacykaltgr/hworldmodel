@@ -36,8 +36,8 @@ from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg
 from omni.isaac.lab.sim.spawners.sensors import PinholeCameraCfg
 from omni.isaac.lab.managers import SceneEntityCfg
 
-from ..isaac.assets.turtlebot import SATIDOG_CFG
-from ..isaac.assets.camera_observationterm import camera_depth
+from ..assets.turtlebot import SATIDOG_CFG
+from ..assets.camera_observationterm import camera_depth
 from ..assets.curriculum import task_order
 from ..assets.navigation import generated_commands, position_command_error_tanh, heading_command_error_abs, height_scan
 
