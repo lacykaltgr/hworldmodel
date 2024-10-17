@@ -115,7 +115,7 @@ class NavigationSceneCfg(InteractiveSceneCfg):
         spawn=PinholeCameraCfg(
             focal_length=7, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.01, 100)
         ),
-        offset=CameraCfg.OffsetCfg(pos=(-1, 0.0, 1), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
+        offset=CameraCfg.OffsetCfg(pos=(-2, 0.0, 1), rot=(1.0, -1.0, 1.0, -1.0), convention="ros"),
     )
 
 

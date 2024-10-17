@@ -8,7 +8,7 @@ from omni.isaac.lab.managers.action_manager import ActionTerm, ActionTermCfg
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.envs import ManagerBasedEnv
 from collections.abc import Sequence
-from isaac.assets.differential_controller import DifferentialController
+from .differential_controller import DifferentialController
 
 ##
 # Custom action term
